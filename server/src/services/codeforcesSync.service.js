@@ -6,16 +6,19 @@ const CODEFORCES_API = "https://codeforces.com/api/user.status";
 
 export function normalizeAcceptedCodeforcesSubmissions(submissions = []) {
   const accepted = submissions.filter((submission) => submission.verdict === "OK" && submission.problem);
-  const seen = new Set();
-  const records = [];
+  const earliestByProblem = new Map();
 
   for (const submission of accepted) {
     const { problem } = submission;
     const platformProblemId = `${problem.contestId || "unknown"}-${problem.index}`;
-    if (seen.has(platformProblemId)) continue;
-    seen.add(platformProblemId);
+    const existing = earliestByProblem.get(platformProblemId);
+    if (existing && existing.creationTimeSeconds <= submission.creationTimeSeconds) continue;
+    earliestByProblem.set(platformProblemId, submission);
+  }
 
-    records.push({
+  const records = [...earliestByProblem.entries()].map(([platformProblemId, submission]) => {
+    const { problem } = submission;
+    return {
       platformProblemId,
       title: problem.name,
       slug: slugify(problem.name),
@@ -30,8 +33,8 @@ export function normalizeAcceptedCodeforcesSubmissions(submissions = []) {
       language: submission.programmingLanguage || "",
       verdict: submission.verdict,
       rating: problem.rating || null
-    });
-  }
+    };
+  });
 
   return { records, totalAccepted: records.length };
 }

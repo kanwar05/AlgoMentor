@@ -28,7 +28,7 @@ export const leetcodeExporterScript = `(async () => {
   const limit = 100;
   let skip = 0;
   let total = Infinity;
-  const solved = [];
+  const solvedProblems = [];
 
   while (skip < total) {
     const response = await fetch("/graphql/", {
@@ -47,7 +47,7 @@ export const leetcodeExporterScript = `(async () => {
 
     const page = payload.data.problemsetQuestionList;
     total = page.total;
-    solved.push(...page.questions
+    solvedProblems.push(...page.questions
       .filter((problem) => String(problem.status).toLowerCase() === "ac")
       .map((problem) => ({
         platform: "LeetCode",
@@ -56,14 +56,54 @@ export const leetcodeExporterScript = `(async () => {
         slug: problem.titleSlug,
         difficulty: problem.difficulty,
         topics: problem.topicTags || [],
-        problemUrl: \`https://leetcode.com/problems/\${problem.titleSlug}/\`
+        problemUrl: \`https://leetcode.com/problems/\${problem.titleSlug}/\`,
+        solvedAt: null
       })));
 
     skip += limit;
     console.log(\`AlgoMentor export: scanned \${Math.min(skip, total)} / \${total}\`);
   }
 
-  const unique = [...new Map(solved.map((problem) => [problem.platformProblemId, problem])).values()];
+  const firstAcceptedBySlug = new Map();
+  let offset = 0;
+  let lastKey = "";
+  let hasNext = true;
+
+  while (hasNext) {
+    const url = \`/api/submissions/?offset=\${offset}&limit=100&lastkey=\${encodeURIComponent(lastKey)}\`;
+    const response = await fetch(url, { credentials: "include" });
+    if (!response.ok) break;
+    const payload = await response.json();
+    const submissions = payload.submissions_dump || [];
+
+    for (const submission of submissions) {
+      if (submission.status_display !== "Accepted" || !submission.title_slug) continue;
+      const timestamp = Number(submission.timestamp) * 1000;
+      const current = firstAcceptedBySlug.get(submission.title_slug);
+      if (!current || timestamp < current.timestamp) {
+        firstAcceptedBySlug.set(submission.title_slug, {
+          timestamp,
+          submissionId: String(submission.id || ""),
+          language: submission.lang || ""
+        });
+      }
+    }
+
+    hasNext = Boolean(payload.has_next) && submissions.length > 0;
+    lastKey = payload.last_key || "";
+    offset += submissions.length;
+    console.log(\`AlgoMentor export: scanned \${offset} submissions\`);
+  }
+
+  const unique = [...new Map(solvedProblems.map((problem) => {
+    const acceptance = firstAcceptedBySlug.get(problem.slug);
+    return [problem.platformProblemId, {
+      ...problem,
+      solvedAt: acceptance ? new Date(acceptance.timestamp).toISOString() : undefined,
+      submissionId: acceptance?.submissionId || "",
+      language: acceptance?.language || ""
+    }];
+  })).values()];
   const blob = new Blob([JSON.stringify(unique, null, 2)], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);

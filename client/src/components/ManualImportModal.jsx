@@ -61,7 +61,7 @@ export default function ManualImportModal({ open, onClose, onImport, loading }) 
             <li>Open browser DevTools, choose Console, paste the exporter, and press Enter. If Chrome blocks pasting, type <code>allow pasting</code> first.</li>
             <li>Wait for <code>algomentor-leetcode-solved.json</code> to download, then upload it below.</li>
           </ol>
-          <p className="mt-3 text-xs text-slate-500">The script runs on LeetCode, reads only problem-list data, and downloads it to your computer. Cookies and credentials are never included in the file or sent to AlgoMentor.</p>
+          <p className="mt-3 text-xs text-slate-500">The script runs on LeetCode, reads your solved list and submission timestamps, then downloads them to your computer. Cookies and credentials are never included in the file or sent to AlgoMentor.</p>
           <button className="btn-secondary mt-4" onClick={copyExporter}>{copied ? <Check size={16} /> : <Clipboard size={16} />}{copied ? "Exporter copied" : "Copy LeetCode exporter"}</button>
           <details className="mt-3"><summary className="cursor-pointer text-xs font-bold text-violet-600">View exporter script</summary><textarea readOnly className="input mt-2 min-h-36 font-mono text-[11px]" value={leetcodeExporterScript} /></details>
         </div>

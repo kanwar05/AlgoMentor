@@ -31,9 +31,14 @@ test("Codeforces sync keeps accepted submissions only", () => {
 });
 
 test("Codeforces sync prevents duplicate contestId + index records", () => {
-  const result = normalizeAcceptedCodeforcesSubmissions([submission(), submission({ id: 999 })]);
+  const result = normalizeAcceptedCodeforcesSubmissions([
+    submission(),
+    submission({ id: 999, creationTimeSeconds: 1_600_000_000 })
+  ]);
   assert.equal(result.records.length, 1);
   assert.equal(result.totalAccepted, 1);
+  assert.equal(result.records[0].submissionId, "999");
+  assert.equal(result.records[0].solvedAt.toISOString(), new Date(1_600_000_000 * 1000).toISOString());
 });
 
 test("platform tags map to AlgoMentor topics", () => {
