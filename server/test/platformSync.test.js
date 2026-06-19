@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { validateManualImport } from "../src/controllers/syncController.js";
 import { normalizeAcceptedCodeforcesSubmissions } from "../src/services/codeforcesSync.service.js";
+import { fetchLeetCodeAccepted } from "../src/services/leetcodeSync.service.js";
 import { generateAnalytics } from "../src/services/analyticsService.js";
 import { mapCodeforcesTopics, mapLeetCodeTopics } from "../src/services/platformTopicMapping.js";
 
@@ -73,4 +74,50 @@ test("manual import validates shape, platform, and URLs", () => {
   }]);
   assert.equal(valid.platformProblemId, "two-sum");
   assert.deepEqual(valid.topics, ["Arrays", "Hashing"]);
+});
+
+test("manual import accepts LeetCode exporter field names", () => {
+  const [valid] = validateManualImport([{
+    platform: "LeetCode",
+    frontendQuestionId: "42",
+    title: "Trapping Rain Water",
+    titleSlug: "trapping-rain-water",
+    difficulty: "HARD",
+    topicTags: [{ name: "Array", slug: "array" }, { name: "Dynamic Programming", slug: "dynamic-programming" }]
+  }]);
+  assert.equal(valid.platformProblemId, "42");
+  assert.equal(valid.slug, "trapping-rain-water");
+  assert.deepEqual(valid.topics, ["Arrays", "Dynamic Programming"]);
+});
+
+test("LeetCode sync reports the full solved count separately from its public recent list", async () => {
+  const responses = [
+    {
+      data: {
+        recentAcSubmissionList: [{ id: "1", title: "Two Sum", titleSlug: "two-sum", timestamp: "1700000000", lang: "javascript" }],
+        matchedUser: {
+          username: "coder",
+          submitStatsGlobal: { acSubmissionNum: [{ difficulty: "All", count: 250 }] }
+        }
+      }
+    },
+    {
+      data: {
+        question: {
+          questionFrontendId: "1",
+          difficulty: "Easy",
+          topicTags: [{ name: "Array", slug: "array" }]
+        }
+      }
+    }
+  ];
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => responses.shift()
+  });
+
+  const result = await fetchLeetCodeAccepted("coder", fetchImpl);
+  assert.equal(result.records.length, 1);
+  assert.equal(result.totalSolved, 250);
 });

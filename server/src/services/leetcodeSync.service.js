@@ -13,7 +13,12 @@ const recentQuery = `
       timestamp
       lang
     }
-    matchedUser(username: $username) { username }
+    matchedUser(username: $username) {
+      username
+      submitStatsGlobal {
+        acSubmissionNum { difficulty count submissions }
+      }
+    }
   }
 `;
 
@@ -70,7 +75,8 @@ async function mapWithConcurrency(items, limit, mapper) {
 export async function fetchLeetCodeAccepted(username, fetchImpl = fetch) {
   let data;
   try {
-    data = await graphqlRequest(recentQuery, { username, limit: 100 }, fetchImpl);
+    // LeetCode currently hard-caps this public query at 20 records.
+    data = await graphqlRequest(recentQuery, { username, limit: 20 }, fetchImpl);
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(503, "LeetCode is temporarily unreachable. Try again or use manual import.");
@@ -90,7 +96,7 @@ export async function fetchLeetCodeAccepted(username, fetchImpl = fetch) {
 
   // Hash Map deduplication keeps only the newest accepted submission per problem slug.
   const seen = new Set();
-  return recent.flatMap((submission, index) => {
+  const records = recent.flatMap((submission, index) => {
     if (seen.has(submission.titleSlug)) return [];
     seen.add(submission.titleSlug);
     const question = details[index]?.question;
@@ -109,11 +115,26 @@ export async function fetchLeetCodeAccepted(username, fetchImpl = fetch) {
       rating: null
     }];
   });
+
+  const totalSolved = data.matchedUser.submitStatsGlobal?.acSubmissionNum
+    ?.find((item) => item.difficulty === "All")?.count || records.length;
+  return { records, totalSolved };
 }
 
 export async function syncLeetCodeProblems(userId, username, fetchImpl = fetch) {
   if (!username?.trim()) throw new HttpError(400, "Add a LeetCode username before syncing");
-  const records = await fetchLeetCodeAccepted(username.trim(), fetchImpl);
+  const { records, totalSolved } = await fetchLeetCodeAccepted(username.trim(), fetchImpl);
   const result = await upsertSyncedProblems(userId, "LeetCode", records);
-  return { ...result, totalAccepted: records.length };
+  const syncedCount = result.totalSynced;
+  const complete = syncedCount >= totalSolved;
+  return {
+    ...result,
+    totalAccepted: totalSolved,
+    fetched: records.length,
+    complete,
+    missing: Math.max(totalSolved - syncedCount, 0),
+    message: complete
+      ? "Complete LeetCode history synced"
+      : `LeetCode exposes only the latest ${records.length} accepted submissions publicly. Import the remaining ${Math.max(totalSolved - syncedCount, 0)} with manual import.`
+  };
 }

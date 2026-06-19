@@ -167,7 +167,9 @@ AlgoMentor calls `user.status`, keeps submissions whose verdict is `OK`, and ded
 
 ### LeetCode limitations
 
-LeetCode does not provide a stable public REST API for complete submission history. AlgoMentor uses the public GraphQL endpoint to request recent accepted submissions and question metadata. Results may be limited to recent activity, and LeetCode can return `403` or `429` responses. The UI reports those cases clearly and supports manual JSON import as a fallback.
+LeetCode does not provide a stable public API for complete submission history by username. Its public GraphQL query currently hard-caps accepted submissions at the latest 20 records; requesting larger limits still returns 20. The profile API provides the full solved count but not the identities of older solved problems.
+
+For a complete history, open **Manual import** and copy the supplied exporter into the browser console on the logged-in LeetCode problemset page. The script paginates through the problem list, selects every accepted problem, and downloads one JSON file that can be uploaded to AlgoMentor. It executes on LeetCode's own origin; session cookies are not written to the export or sent to AlgoMentor. Imports support up to 5,000 problems and remain idempotent.
 
 Example manual import:
 

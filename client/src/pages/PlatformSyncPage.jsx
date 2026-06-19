@@ -66,7 +66,12 @@ export default function PlatformSyncPage() {
     setLoading((state) => ({ ...state, [key]: true }));
     try {
       const response = await api.post(`/sync/${key}`);
-      notify(`${platform}: ${response.data.imported} imported, ${response.data.skipped} already synced`);
+      notify(
+        response.data.complete === false
+          ? `${platform}: ${response.data.imported} imported; ${response.data.missing} older solved problems still need manual import`
+          : `${platform}: ${response.data.imported} imported, ${response.data.skipped} already synced`,
+        response.data.complete === false ? "error" : "success"
+      );
       await load();
     } catch (error) {
       notify(error.response?.data?.message || `${platform} sync failed`, "error");
@@ -81,7 +86,14 @@ export default function PlatformSyncPage() {
     try {
       const response = await api.post("/sync/all");
       const failed = response.data.results?.filter((item) => !item.success) || [];
-      notify(failed.length ? `Sync completed with ${failed.length} platform error` : `Imported ${response.data.imported} new problems`, failed.length ? "error" : "success");
+      notify(
+        failed.length
+          ? `Sync completed with ${failed.length} platform error`
+          : response.data.complete === false
+            ? `Imported ${response.data.imported}; ${response.data.missing} LeetCode problems still need manual import`
+            : `Imported ${response.data.imported} new problems`,
+        failed.length || response.data.complete === false ? "error" : "success"
+      );
       await load();
     } catch (error) {
       notify(error.response?.data?.message || "Platform sync failed", "error");
@@ -107,11 +119,15 @@ export default function PlatformSyncPage() {
   };
 
   if (loading.initial) return <div className="card animate-pulse text-slate-400">Loading platform connections…</div>;
+  const leetcodeCoverage = status.coverage?.LeetCode;
 
   return (
     <>
       {toast && <div className={`fixed right-5 top-5 z-[60] max-w-sm rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg ${toast.type === "error" ? "bg-rose-500" : "bg-emerald-500"}`}>{toast.message}</div>}
       <PageHeader eyebrow="Automatic tracking" title="Platform Sync" description="Bring accepted submissions into the same analytics, roadmap, and recommendation loop." action={<div className="flex gap-2"><button className="btn-secondary" onClick={() => setManualOpen(true)}><Upload size={16} /> Manual import</button><button className="btn-primary" onClick={syncAll} disabled={loading.all}><RefreshCw size={16} className={loading.all ? "animate-spin" : ""} /> Sync all</button></div>} />
+      <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">
+        Codeforces sync imports the complete accepted history. LeetCode’s public profile API exposes only the latest 20 accepted submissions and the full solved count—not every older problem identity. Use manual import for the remainder; AlgoMentor will deduplicate everything automatically.
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <PlatformConnectCard platform="LeetCode" value={handles.leetcodeUsername || ""} onChange={(value) => setHandles({ ...handles, leetcodeUsername: value })} onSave={saveHandles} saving={loading.save} placeholder="your_username" connected={Boolean(status.platforms?.leetcodeUsername)} />
@@ -119,7 +135,7 @@ export default function PlatformSyncPage() {
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <SyncStatusCard platform="LeetCode" count={status.counts?.LeetCode} lastSync={status.platforms?.lastLeetCodeSync} onSync={() => sync("LeetCode")} loading={loading.leetcode} disabled={!status.platforms?.leetcodeUsername} />
+        <SyncStatusCard platform="LeetCode" count={status.counts?.LeetCode} lastSync={status.platforms?.lastLeetCodeSync} onSync={() => sync("LeetCode")} loading={loading.leetcode} disabled={!status.platforms?.leetcodeUsername} warning={leetcodeCoverage && !leetcodeCoverage.complete ? `${leetcodeCoverage.missing} solved problems remain. Use “Manual import” once to export and upload your complete LeetCode history.` : ""} />
         <SyncStatusCard platform="Codeforces" count={status.counts?.Codeforces} lastSync={status.platforms?.lastCodeforcesSync} onSync={() => sync("Codeforces")} loading={loading.codeforces} disabled={!status.platforms?.codeforcesHandle} />
       </div>
 

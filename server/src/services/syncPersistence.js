@@ -1,7 +1,10 @@
 import SyncedProblem from "../models/SyncedProblem.js";
 
 export async function upsertSyncedProblems(userId, platform, records) {
-  if (!records.length) return { imported: 0, skipped: 0 };
+  if (!records.length) {
+    const totalSynced = await SyncedProblem.countDocuments({ userId, platform });
+    return { imported: 0, skipped: 0, totalSynced };
+  }
 
   const uniqueRecords = [...new Map(records.map((record) => [record.platformProblemId, record])).values()];
   const inputDuplicates = records.length - uniqueRecords.length;
@@ -23,8 +26,10 @@ export async function upsertSyncedProblems(userId, platform, records) {
 
   // One bulk write keeps imports efficient; the unique compound index prevents races.
   await SyncedProblem.bulkWrite(operations, { ordered: false });
+  const totalSynced = await SyncedProblem.countDocuments({ userId, platform });
   return {
     imported: uniqueRecords.filter((record) => !existingIds.has(record.platformProblemId)).length,
-    skipped: uniqueRecords.filter((record) => existingIds.has(record.platformProblemId)).length + inputDuplicates
+    skipped: uniqueRecords.filter((record) => existingIds.has(record.platformProblemId)).length + inputDuplicates,
+    totalSynced
   };
 }
