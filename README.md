@@ -214,6 +214,16 @@ Add deployed captures under `docs/screenshots/`:
 
 1. Landing page
 2. Analytics dashboard
+<img src="./screenshots/Screenshot 2026-06-19 at 11.37.27 AM.png" />
+<img src="./screenshots/Screenshot 2026-06-19 at 11.37.40 AM.png" />
+<img src="./screenshots/Screenshot 2026-06-19 at 11.37.53 AM.png" />
+<img src="./screenshots/Screenshot 2026-06-19 at 11.38.03 AM.png" />
+<img src="./screenshots/Screenshot 2026-06-19 at 11.38.14 AM.png" />
+<img src="./screenshots/Screenshot 2026-06-19 at 11.38.22 AM.png" />
+<img src="./screenshots/Screenshot 2026-06-19 at 11.38.46 AM.png" />
+<img src="./screenshots/Screenshot 2026-06-19 at 11.39.06 AM.png" />
+<img src="./screenshots/" />
+<img src="./screenshots" />
 3. Dependency roadmap
 4. Seven-day revision plan
 5. Recommendations
