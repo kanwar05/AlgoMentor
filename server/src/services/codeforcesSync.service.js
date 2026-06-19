@@ -64,5 +64,12 @@ export async function syncCodeforcesProblems(userId, handle, fetchImpl = fetch) 
 
   const { records, totalAccepted } = normalizeAcceptedCodeforcesSubmissions(payload.result);
   const result = await upsertSyncedProblems(userId, "Codeforces", records);
-  return { ...result, totalAccepted };
+  return {
+    ...result,
+    totalAccepted,
+    fetched: records.length,
+    complete: true,
+    missing: 0,
+    message: "Complete Codeforces accepted-problem history synced"
+  };
 }

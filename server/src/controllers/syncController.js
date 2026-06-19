@@ -15,6 +15,8 @@ async function recordHistory(userId, platform, status, result = {}, message = ""
     imported: result.imported || 0,
     skipped: result.skipped || 0,
     totalAccepted: result.totalAccepted || 0,
+    complete: result.complete !== false,
+    missing: result.missing || 0,
     message
   });
 }
@@ -36,7 +38,7 @@ function syncAction(platform) {
   return asyncHandler(async (req, res) => {
     try {
       const result = await runSync(req.user, platform);
-      await recordHistory(req.user._id, platform, "success", result, `${platform} sync completed`);
+      await recordHistory(req.user._id, platform, result.complete === false ? "partial" : "success", result, result.message || `${platform} sync completed`);
       res.json({ platform, ...result, syncedAt: new Date().toISOString() });
     } catch (error) {
       await recordHistory(req.user._id, platform, "failed", {}, error.message);
@@ -61,7 +63,7 @@ export const syncAll = asyncHandler(async (req, res) => {
     try {
       const result = await runSync(req.user, platform);
       results.push({ platform, success: true, ...result });
-      await recordHistory(req.user._id, platform, "success", result, `${platform} sync completed`);
+      await recordHistory(req.user._id, platform, result.complete === false ? "partial" : "success", result, result.message || `${platform} sync completed`);
     } catch (error) {
       results.push({ platform, success: false, error: error.message });
       await recordHistory(req.user._id, platform, "failed", {}, error.message);
@@ -72,12 +74,14 @@ export const syncAll = asyncHandler(async (req, res) => {
   const summary = {
     imported: results.reduce((sum, item) => sum + (item.imported || 0), 0),
     skipped: results.reduce((sum, item) => sum + (item.skipped || 0), 0),
-    totalAccepted: results.reduce((sum, item) => sum + (item.totalAccepted || 0), 0)
+    totalAccepted: results.reduce((sum, item) => sum + (item.totalAccepted || 0), 0),
+    complete: results.every((item) => item.success && item.complete !== false),
+    missing: results.reduce((sum, item) => sum + (item.missing || 0), 0)
   };
   await recordHistory(
     req.user._id,
     "All",
-    successCount === results.length ? "success" : successCount ? "partial" : "failed",
+    successCount === results.length && summary.complete ? "success" : successCount ? "partial" : "failed",
     summary,
     `${successCount}/${results.length} platform syncs completed`
   );
@@ -89,7 +93,7 @@ export function validateManualImport(items) {
   if (!Array.isArray(items) || !items.length) {
     throw new HttpError(400, "Provide a non-empty array of solved problems");
   }
-  if (items.length > 500) throw new HttpError(400, "Manual import is limited to 500 problems at a time");
+  if (items.length > 5000) throw new HttpError(400, "Manual import is limited to 5,000 problems at a time");
 
   return items.map((item, index) => {
     const platform = item.platform === "Codeforces" ? "Codeforces" : item.platform === "LeetCode" ? "LeetCode" : null;
@@ -103,7 +107,8 @@ export function validateManualImport(items) {
       throw new HttpError(400, `Item ${index + 1} topics must be an array`);
     }
 
-    const slug = item.slug || slugify(item.title);
+    const slug = item.slug || item.titleSlug || slugify(item.title);
+    const rawTopics = item.topics || item.topicTags || item.tags || [];
     const solvedAt = item.solvedAt ? new Date(item.solvedAt) : new Date();
     if (Number.isNaN(solvedAt.getTime())) {
       throw new HttpError(400, `Item ${index + 1} has an invalid solvedAt date`);
@@ -111,13 +116,13 @@ export function validateManualImport(items) {
 
     return {
       platform,
-      platformProblemId: String(item.platformProblemId || slug),
+      platformProblemId: String(item.platformProblemId || item.frontendQuestionId || item.questionFrontendId || slug),
       title: String(item.title).trim(),
       slug,
       difficulty: normalizeDifficulty(item.difficulty),
       topics: platform === "LeetCode"
-        ? mapLeetCodeTopics(item.topics || [])
-        : [...new Set((item.topics || []).map(String).filter(Boolean))],
+        ? mapLeetCodeTopics(rawTopics)
+        : [...new Set(rawTopics.map((topic) => typeof topic === "string" ? topic : topic.name).filter(Boolean))],
       status: "Solved",
       solvedAt,
       submissionId: String(item.submissionId || ""),
@@ -156,14 +161,17 @@ export const manualImport = asyncHandler(async (req, res) => {
 });
 
 export const getSyncStatus = asyncHandler(async (req, res) => {
-  const [counts, history] = await Promise.all([
+  const [counts, history, latestLeetCodeSync] = await Promise.all([
     SyncedProblem.aggregate([
       { $match: { userId: req.user._id } },
       { $group: { _id: "$platform", count: { $sum: 1 } } }
     ]),
-    SyncHistory.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(10).lean()
+    SyncHistory.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(10).lean(),
+    SyncHistory.findOne({ userId: req.user._id, platform: "LeetCode", totalAccepted: { $gt: 0 } }).sort({ createdAt: -1 }).lean()
   ]);
   const platformCounts = Object.fromEntries(counts.map((item) => [item._id, item.count]));
+  const leetcodeSynced = platformCounts.LeetCode || 0;
+  const leetcodeReported = latestLeetCodeSync?.totalAccepted || leetcodeSynced;
 
   res.json({
     platforms: {
@@ -176,6 +184,18 @@ export const getSyncStatus = asyncHandler(async (req, res) => {
       total: counts.reduce((sum, item) => sum + item.count, 0),
       LeetCode: platformCounts.LeetCode || 0,
       Codeforces: platformCounts.Codeforces || 0
+    },
+    coverage: {
+      LeetCode: {
+        synced: leetcodeSynced,
+        reported: leetcodeReported,
+        missing: Math.max(leetcodeReported - leetcodeSynced, 0),
+        complete: leetcodeSynced >= leetcodeReported
+      },
+      Codeforces: {
+        synced: platformCounts.Codeforces || 0,
+        complete: true
+      }
     },
     history
   });

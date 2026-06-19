@@ -8,6 +8,8 @@ const syncHistorySchema = new mongoose.Schema(
     imported: { type: Number, default: 0 },
     skipped: { type: Number, default: 0 },
     totalAccepted: { type: Number, default: 0 },
+    complete: { type: Boolean, default: true },
+    missing: { type: Number, default: 0 },
     message: { type: String, trim: true, default: "" }
   },
   { timestamps: true }
