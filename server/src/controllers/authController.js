@@ -9,7 +9,11 @@ const publicUser = (user) => ({
   email: user.email,
   codingGoal: user.codingGoal,
   targetCompany: user.targetCompany,
-  weeklyGoal: user.weeklyGoal
+  weeklyGoal: user.weeklyGoal,
+  leetcodeUsername: user.leetcodeUsername,
+  codeforcesHandle: user.codeforcesHandle,
+  lastLeetCodeSync: user.lastLeetCodeSync,
+  lastCodeforcesSync: user.lastCodeforcesSync
 });
 
 export const register = asyncHandler(async (req, res) => {

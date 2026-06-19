@@ -4,7 +4,9 @@ export const TOPICS = [
   "Array", "String", "Hashing", "Two Pointers", "Sliding Window",
   "Binary Search", "Linked List", "Stack", "Queue", "Recursion",
   "Backtracking", "Tree", "BST", "Heap", "Graph", "BFS/DFS",
-  "Dijkstra", "MST", "Dynamic Programming", "Greedy", "Bit Manipulation"
+  "Dijkstra", "MST", "Dynamic Programming", "Greedy", "Bit Manipulation",
+  "Arrays", "Basic Programming", "Graphs", "Trees", "Strings",
+  "Data Structures", "Trie", "Heap / Priority Queue"
 ];
 
 const problemSchema = new mongoose.Schema(

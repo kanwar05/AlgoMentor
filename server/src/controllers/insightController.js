@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import Problem from "../models/Problem.js";
+import SyncedProblem from "../models/SyncedProblem.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { generateAnalytics } from "../services/analyticsService.js";
 import { recommendProblems } from "../services/recommendationService.js";
@@ -7,7 +8,30 @@ import { generateRevisionPlan } from "../services/revisionService.js";
 import { generateRoadmap } from "../services/roadmapService.js";
 
 async function loadContext(user) {
-  const problems = await Problem.find({ user: user._id }).sort({ solvedDate: -1 }).lean();
+  const [manualProblems, syncedProblems] = await Promise.all([
+    Problem.find({ user: user._id }).sort({ solvedDate: -1 }).lean(),
+    SyncedProblem.find({ userId: user._id }).sort({ solvedAt: -1 }).lean()
+  ]);
+  const normalizedSynced = syncedProblems.map((problem) => ({
+    _id: problem._id,
+    title: problem.title,
+    platform: problem.platform,
+    difficulty: problem.difficulty,
+    topics: problem.topics,
+    status: problem.status,
+    link: problem.problemUrl,
+    solvedDate: problem.solvedAt,
+    synced: true
+  }));
+
+  // Deduplication across manual and synced sources prevents inflated analytics.
+  const seen = new Set();
+  const problems = [...manualProblems, ...normalizedSynced].filter((problem) => {
+    const key = `${String(problem.platform).toLowerCase()}:${String(problem.title).toLowerCase().trim()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => new Date(b.solvedDate) - new Date(a.solvedDate));
   const analytics = generateAnalytics(problems, user.weeklyGoal);
   return { problems, analytics };
 }

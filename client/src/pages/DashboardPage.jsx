@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpenCheck, BrainCircuit, Flame, Target, TrendingUp, TriangleAlert } from "lucide-react";
+import { ArrowRight, BookOpenCheck, BrainCircuit, Code2, Flame, Target, TrendingUp, TriangleAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import Heatmap from "../components/Heatmap";
@@ -16,13 +16,15 @@ export default function DashboardPage() {
   const { summary, weeklyActivity, weakTopics, activity } = data;
   const cards = [
     { label: "Problems solved", value: summary.totalSolved, note: `${summary.solvedThisWeek} this week`, icon: BookOpenCheck, color: "bg-violet-100 text-violet-600 dark:bg-violet-400/10" },
+    { label: "LeetCode solved", value: summary.leetcodeSolved || 0, note: "Synced + manually logged", icon: Code2, color: "bg-amber-100 text-amber-600 dark:bg-amber-400/10" },
+    { label: "Codeforces solved", value: summary.codeforcesSolved || 0, note: "Unique accepted problems", icon: Code2, color: "bg-blue-100 text-blue-600 dark:bg-blue-400/10" },
     { label: "Current streak", value: `${summary.streak.current} days`, note: `Personal best: ${summary.streak.longest}`, icon: Flame, color: "bg-orange-100 text-orange-600 dark:bg-orange-400/10" },
     { label: "Interview ready", value: `${summary.readinessScore}%`, note: summary.readinessScore >= 70 ? "Strong momentum" : "Keep building coverage", icon: Target, color: "bg-lime-400/30 text-lime-700 dark:text-lime-400" }
   ];
   return (
     <>
       <PageHeader eyebrow="Your command center" title={`Good ${new Date().getHours() < 12 ? "morning" : "work"}, ${user?.name?.split(" ")[0]}.`} description="Here’s the signal beneath your latest practice." action={<Link to="/app/recommendations" className="btn-secondary">What should I solve? <ArrowRight size={16} /></Link>} />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {cards.map(({ label, value, note, icon: Icon, color }) => <div key={label} className="card"><div className="flex items-start justify-between"><div><p className="text-sm font-semibold text-slate-500">{label}</p><p className="mt-2 font-display text-3xl font-extrabold">{value}</p><p className="mt-2 text-xs text-slate-400">{note}</p></div><span className={`grid h-11 w-11 place-items-center rounded-2xl ${color}`}><Icon size={21} /></span></div></div>)}
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
