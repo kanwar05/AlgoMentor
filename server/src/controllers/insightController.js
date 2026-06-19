@@ -31,7 +31,11 @@ async function loadContext(user) {
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).sort((a, b) => new Date(b.solvedDate) - new Date(a.solvedDate));
+  }).sort((a, b) => {
+    if (!a.solvedDate) return 1;
+    if (!b.solvedDate) return -1;
+    return new Date(b.solvedDate) - new Date(a.solvedDate);
+  });
   const analytics = generateAnalytics(problems, user.weeklyGoal);
   return { problems, analytics };
 }

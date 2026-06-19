@@ -171,6 +171,8 @@ LeetCode does not provide a stable public API for complete submission history by
 
 For a complete history, open **Manual import** and copy the supplied exporter into the browser console on the logged-in LeetCode problemset page. The script paginates through the problem list, selects every accepted problem, and downloads one JSON file that can be uploaded to AlgoMentor. It executes on LeetCode's own origin; session cookies are not written to the export or sent to AlgoMentor. Imports support up to 5,000 problems and remain idempotent.
 
+The exporter also paginates authenticated submission history to attach the earliest accepted timestamp to each problem. Re-importing the generated file updates existing records, replacing older sync-time dates. If LeetCode does not expose a timestamp for a problem, AlgoMentor displays `Date unavailable` rather than using the import date.
+
 Example manual import:
 
 ```json

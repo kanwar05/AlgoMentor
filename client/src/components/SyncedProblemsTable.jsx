@@ -21,7 +21,7 @@ export default function SyncedProblemsTable({ problems = [] }) {
                 <td className="px-5 py-4 text-slate-500">{problem.platform}</td>
                 <td className="px-5 py-4">{problem.difficulty}</td>
                 <td className="max-w-xs px-5 py-4 text-xs text-slate-500">{problem.topics?.slice(0, 3).join(" · ") || "Uncategorized"}</td>
-                <td className="px-5 py-4 text-xs text-slate-400">{new Date(problem.solvedAt).toLocaleDateString()}</td>
+                <td className="px-5 py-4 text-xs text-slate-400">{problem.solvedAt ? new Date(problem.solvedAt).toLocaleDateString() : "Date unavailable"}</td>
               </tr>
             ))}
             {!problems.length && <tr><td colSpan="5" className="px-5 py-10 text-center text-slate-400">No synced problems yet.</td></tr>}
