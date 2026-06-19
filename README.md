@@ -26,6 +26,10 @@ AlgoMentor answers those questions using transparent scoring and actual DSA data
 - Company-aware recommendations for Google, Amazon, Microsoft, Meta, or a general track
 - Explainable interview-readiness score with four visible sub-scores
 - Optional OpenAI-generated roadmap coaching
+- LeetCode and Codeforces account connections with accepted-submission sync
+- Idempotent platform imports backed by a compound MongoDB unique index
+- Manual JSON import fallback when LeetCode blocks or rate-limits GraphQL requests
+- Platform-specific solved counts and sync-powered analytics, heatmaps, weak topics, readiness, roadmaps, and recommendations
 - Responsive UI, dark mode, production error handling, rate limiting, and security headers
 - Interactive demo mode for portfolio reviewers
 
@@ -44,6 +48,7 @@ AlgoMentor answers those questions using transparent scoring and actual DSA data
 ## DSA concepts implemented
 
 - **Hash Maps:** O(n) topic, status, difficulty, and daily-activity counting in `analyticsService.js`
+- **Deduplication:** in-memory sets plus a `userId + platform + platformProblemId` unique index prevent repeated accepted submissions
 - **Directed Graph:** adjacency-list representation of DSA prerequisites in `topicGraph.js`
 - **BFS:** backward prerequisite discovery for weak topics
 - **DFS:** forward traversal through dependent concepts to form a focused learning sequence
@@ -87,6 +92,7 @@ All routes except register, login, and health require `Authorization: Bearer <to
 | POST | `/api/auth/login` | Authenticate and return a JWT |
 | GET | `/api/auth/me` | Get profile |
 | PUT | `/api/auth/me` | Update goals and preferences |
+| PUT | `/api/profile/platforms` | Save LeetCode and Codeforces handles |
 | GET | `/api/problems` | List/search/filter problems |
 | POST | `/api/problems` | Add a solved problem |
 | PUT | `/api/problems/:id` | Update a problem |
@@ -96,6 +102,12 @@ All routes except register, login, and health require `Authorization: Bearer <to
 | GET | `/api/roadmap?explain=true` | Include optional AI coaching |
 | GET | `/api/revision-plan` | Seven-day priority plan |
 | GET | `/api/recommendations` | Ranked unsolved questions |
+| POST | `/api/sync/leetcode` | Import recent accepted LeetCode submissions |
+| POST | `/api/sync/codeforces` | Import unique accepted Codeforces submissions |
+| POST | `/api/sync/all` | Sync every connected platform |
+| POST | `/api/sync/manual-import` | Import a JSON array of solved problems |
+| GET | `/api/sync/status` | Connected handles, counts, timestamps, and history |
+| GET | `/api/sync/problems` | Paginated synced-problem list |
 | GET | `/api/health` | Service health check |
 
 ## Run locally
@@ -108,7 +120,7 @@ npm run install:all
 npm run dev
 ```
 
-Open `http://localhost:5173`. The API runs at `http://localhost:5000`.
+Open `http://localhost:5173`. The API runs at `http://localhost:5001`.
 
 To add a portfolio-ready demo account:
 
@@ -131,6 +143,55 @@ OPENAI_MODEL=gpt-4o-mini
 
 The product works fully without an AI key; AI is an enhancement, not a dependency.
 
+### Environment variables
+
+```env
+MONGODB_URI=mongodb://127.0.0.1:27017/algomentor
+JWT_SECRET=replace-with-a-long-random-secret
+JWT_EXPIRES_IN=7d
+PORT=5001
+CLIENT_URL=http://localhost:5173
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+```
+
+Platform sync uses public LeetCode and Codeforces endpoints and requires no platform API keys.
+
+## Platform Sync
+
+Open **Platform Sync** in the authenticated sidebar, save one or both handles, and run an individual or combined sync.
+
+### How Codeforces sync works
+
+AlgoMentor calls `user.status`, keeps submissions whose verdict is `OK`, and deduplicates them by `contestId + problem index`. It imports the problem name, tags, rating, language, accepted timestamp, submission ID, and canonical problem URL. Codeforces ratings are normalized into Easy, Medium, and Hard bands, while known tags are mapped to AlgoMentor topics.
+
+### LeetCode limitations
+
+LeetCode does not provide a stable public REST API for complete submission history. AlgoMentor uses the public GraphQL endpoint to request recent accepted submissions and question metadata. Results may be limited to recent activity, and LeetCode can return `403` or `429` responses. The UI reports those cases clearly and supports manual JSON import as a fallback.
+
+Example manual import:
+
+```json
+[
+  {
+    "platform": "LeetCode",
+    "title": "Two Sum",
+    "difficulty": "Easy",
+    "topics": ["array", "hash-table"],
+    "problemUrl": "https://leetcode.com/problems/two-sum/"
+  }
+]
+```
+
+## Testing
+
+```bash
+npm test
+npm run build
+```
+
+The server test suite covers Codeforces accepted-submission filtering, duplicate prevention, platform topic mapping, readiness changes after sync, and manual-import validation.
+
 ## Readiness formula
 
 ```text
@@ -152,16 +213,16 @@ Add deployed captures under `docs/screenshots/`:
 3. Dependency roadmap
 4. Seven-day revision plan
 5. Recommendations
-6. Mobile and dark-mode views
+6. Platform Sync connections and history
+7. Mobile and dark-mode views
 
 ## Future improvements
 
-- Platform sync for LeetCode and Codeforces
 - Trie-based instant title/topic suggestions
 - Redis caching for aggregate analytics
 - Scheduled email revision reminders
 - Cohort benchmarking and mock-interview history
-- Unit/integration test suite and CI pipeline
+- CI pipeline and expanded API integration tests
 - Drag-and-drop roadmap customization
 - LLM-generated hints grounded in the user's own notes
 
@@ -170,3 +231,4 @@ Add deployed captures under `docs/screenshots/`:
 - Engineered a production-style MERN analytics platform that transforms DSA practice history into topic coverage, streaks, heatmaps, and an explainable interview-readiness score using hash-map aggregations and weighted scoring.
 - Designed a dependency-aware recommendation engine using directed graphs, BFS/DFS traversal, and a binary max-heap to generate personalized learning roadmaps and priority-ranked seven-day revision plans.
 - Built secure JWT authentication, user-scoped CRUD APIs, company-targeted problem recommendations, optional AI coaching, and a responsive React/Tailwind dashboard with Recharts and dark mode.
+- Implemented idempotent LeetCode and Codeforces synchronization with GraphQL/REST adapters, compound-index deduplication, rate-limit handling, manual import fallback, and unified analytics across manual and synced practice data.

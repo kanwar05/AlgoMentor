@@ -105,10 +105,18 @@ export function generateAnalytics(problems, weeklyGoal = 10) {
   const last7 = activity.slice(-7);
   const solvedThisWeek = last7.reduce((sum, day) => sum + day.count, 0);
   const readiness = calculateReadiness(problems, topicStats, weakTopics, activity);
+  const platformCounts = problems.reduce((counts, problem) => {
+    const platform = problem.platform || "Other";
+    counts[platform] = (counts[platform] || 0) + 1;
+    return counts;
+  }, {});
 
   return {
     summary: {
       totalSolved: problems.length,
+      platformCounts,
+      leetcodeSolved: platformCounts.LeetCode || 0,
+      codeforcesSolved: platformCounts.Codeforces || 0,
       difficulty,
       streak,
       solvedThisWeek,

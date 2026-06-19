@@ -12,7 +12,11 @@ const userSchema = new mongoose.Schema(
       enum: ["Google", "Amazon", "Microsoft", "Meta", "Other"],
       default: "Google"
     },
-    weeklyGoal: { type: Number, min: 1, max: 50, default: 10 }
+    weeklyGoal: { type: Number, min: 1, max: 50, default: 10 },
+    leetcodeUsername: { type: String, trim: true, default: "" },
+    codeforcesHandle: { type: String, trim: true, default: "" },
+    lastLeetCodeSync: { type: Date, default: null },
+    lastCodeforcesSync: { type: Date, default: null }
   },
   { timestamps: true }
 );

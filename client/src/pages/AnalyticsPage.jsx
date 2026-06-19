@@ -6,6 +6,8 @@ import PageHeader from "../components/PageHeader";
 import { demoAnalytics } from "../data/demoData";
 import { useRemoteData } from "../hooks/useRemoteData";
 
+const readinessIcons = [Layers3, CircleGauge, Activity, TrendingUp];
+
 export default function AnalyticsPage() {
   const { data, loading } = useRemoteData("/analytics", demoAnalytics);
   if (loading) return <LoadingState />;
@@ -15,7 +17,10 @@ export default function AnalyticsPage() {
     <>
       <PageHeader eyebrow="Deep dive" title="Practice analytics" description="A transparent view of your coverage, balance, consistency, and readiness." />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {Object.entries(data.readiness.breakdown).map(([key, value], index) => <div className="card" key={key}><div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wider text-slate-400">{key.replace(/([A-Z])/g, " $1")}</span>{[Layers3, CircleGauge, Activity, TrendingUp].map((I) => I)[index]({ size: 18, className: "text-violet-500" })}</div><p className="mt-4 font-display text-3xl font-extrabold">{value}%</p><div className="mt-3 h-1.5 rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full rounded-full bg-violet-400" style={{ width: `${value}%` }} /></div></div>)}
+        {Object.entries(data.readiness.breakdown).map(([key, value], index) => {
+          const Icon = readinessIcons[index] || CircleGauge;
+          return <div className="card" key={key}><div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wider text-slate-400">{key.replace(/([A-Z])/g, " $1")}</span><Icon size={18} className="text-violet-500" /></div><p className="mt-4 font-display text-3xl font-extrabold">{value}%</p><div className="mt-3 h-1.5 rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full rounded-full bg-violet-400" style={{ width: `${value}%` }} /></div></div>;
+        })}
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_1fr]">
         <div className="card"><p className="font-display text-lg font-bold">Topic coverage</p><p className="text-xs text-slate-400">Solved volume by concept</p><div className="mt-5 h-80"><ResponsiveContainer width="100%" height="100%"><BarChart data={data.topicStats} layout="vertical" margin={{ left: 20 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" /><XAxis type="number" axisLine={false} tickLine={false}/><YAxis dataKey="topic" type="category" width={120} axisLine={false} tickLine={false} tick={{ fontSize: 11 }}/><Tooltip contentStyle={{ borderRadius: 12 }}/><Bar dataKey="total" fill="#7f68e8" radius={[0, 8, 8, 0]} barSize={18} /></BarChart></ResponsiveContainer></div></div>

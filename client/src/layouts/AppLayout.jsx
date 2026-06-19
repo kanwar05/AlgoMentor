@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, BookOpenCheck, BrainCircuit, ChevronRight, ClipboardList, LayoutDashboard, LogOut, Menu, Moon, Route, Settings, Sparkles, Sun, UserRound, X } from "lucide-react";
+import { BarChart3, BookOpenCheck, BrainCircuit, ChevronRight, ClipboardList, CloudDownload, LayoutDashboard, LogOut, Menu, Moon, Route, Sparkles, Sun, UserRound, X } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import Brand from "../components/Brand";
 import { useAuth } from "../context/AuthContext";
@@ -11,6 +11,7 @@ const nav = [
   { to: "/app/roadmap", label: "Roadmap", icon: Route },
   { to: "/app/revision", label: "Revision plan", icon: ClipboardList },
   { to: "/app/recommendations", label: "Recommended", icon: Sparkles },
+  { to: "/app/sync", label: "Platform Sync", icon: CloudDownload },
   { to: "/app/profile", label: "Profile", icon: UserRound }
 ];
 

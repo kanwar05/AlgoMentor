@@ -20,7 +20,15 @@ export const topicGraph = {
   Stack: [],
   Queue: ["BFS/DFS"],
   Greedy: ["Heap"],
-  "Bit Manipulation": []
+  "Bit Manipulation": [],
+  Arrays: ["Hashing", "Two Pointers", "Binary Search"],
+  "Basic Programming": ["Arrays"],
+  Graphs: ["BFS/DFS"],
+  Trees: ["BST"],
+  Strings: ["Hashing"],
+  "Data Structures": ["Heap / Priority Queue", "Graphs"],
+  Trie: ["Strings"],
+  "Heap / Priority Queue": ["Graphs"]
 };
 
 export const topicDescriptions = {
@@ -39,5 +47,13 @@ export const topicDescriptions = {
   "BFS/DFS": "Traverse graphs systematically for reachability and shortest paths.",
   Dijkstra: "Find shortest paths in non-negative weighted graphs.",
   MST: "Connect all nodes at minimum total edge cost.",
-  Greedy: "Prove when locally optimal choices produce a global optimum."
+  Greedy: "Prove when locally optimal choices produce a global optimum.",
+  Arrays: "Build fluency with traversal, prefix sums, and in-place transformations.",
+  "Basic Programming": "Strengthen implementation, control flow, and complexity fundamentals.",
+  Graphs: "Model relationships with adjacency lists and visited state.",
+  Trees: "Practice recursive traversal and structural reasoning.",
+  Strings: "Master indexing, frequency counting, parsing, and pattern matching.",
+  "Data Structures": "Choose and combine structures based on access and update costs.",
+  Trie: "Use prefix trees for efficient prefix lookup and dictionary problems.",
+  "Heap / Priority Queue": "Solve top-k and scheduling problems with priority-based access."
 };

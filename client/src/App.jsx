@@ -14,6 +14,7 @@ const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
 const RevisionPlanPage = lazy(() => import("./pages/RevisionPlanPage"));
 const RecommendationsPage = lazy(() => import("./pages/RecommendationsPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const PlatformSyncPage = lazy(() => import("./pages/PlatformSyncPage"));
 
 function Protected({ children }) {
   const { user } = useAuth();
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="roadmap" element={<RoadmapPage />} />
           <Route path="revision" element={<RevisionPlanPage />} />
           <Route path="recommendations" element={<RecommendationsPage />} />
+          <Route path="sync" element={<PlatformSyncPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
