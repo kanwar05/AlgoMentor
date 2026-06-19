@@ -79,6 +79,7 @@ test("manual import validates shape, platform, and URLs", () => {
   }]);
   assert.equal(valid.platformProblemId, "two-sum");
   assert.deepEqual(valid.topics, ["Arrays", "Hashing"]);
+  assert.equal(valid.solvedAt, null);
 });
 
 test("manual import accepts LeetCode exporter field names", () => {
@@ -93,6 +94,16 @@ test("manual import accepts LeetCode exporter field names", () => {
   assert.equal(valid.platformProblemId, "42");
   assert.equal(valid.slug, "trapping-rain-water");
   assert.deepEqual(valid.topics, ["Arrays", "Dynamic Programming"]);
+  assert.equal(valid.solvedAt, null);
+});
+
+test("manual import preserves the real accepted timestamp", () => {
+  const [valid] = validateManualImport([{
+    platform: "LeetCode",
+    title: "Two Sum",
+    solvedAt: "2024-03-15T10:30:00.000Z"
+  }]);
+  assert.equal(valid.solvedAt.toISOString(), "2024-03-15T10:30:00.000Z");
 });
 
 test("LeetCode sync reports the full solved count separately from its public recent list", async () => {

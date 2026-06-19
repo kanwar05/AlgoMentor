@@ -109,7 +109,7 @@ export function validateManualImport(items) {
 
     const slug = item.slug || item.titleSlug || slugify(item.title);
     const rawTopics = item.topics || item.topicTags || item.tags || [];
-    const solvedAt = item.solvedAt ? new Date(item.solvedAt) : undefined;
+    const solvedAt = item.solvedAt ? new Date(item.solvedAt) : null;
     if (solvedAt && Number.isNaN(solvedAt.getTime())) {
       throw new HttpError(400, `Item ${index + 1} has an invalid solvedAt date`);
     }

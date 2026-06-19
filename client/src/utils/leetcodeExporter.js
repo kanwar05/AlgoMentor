@@ -99,7 +99,7 @@ export const leetcodeExporterScript = `(async () => {
     const acceptance = firstAcceptedBySlug.get(problem.slug);
     return [problem.platformProblemId, {
       ...problem,
-      solvedAt: acceptance ? new Date(acceptance.timestamp).toISOString() : undefined,
+      solvedAt: acceptance ? new Date(acceptance.timestamp).toISOString() : null,
       submissionId: acceptance?.submissionId || "",
       language: acceptance?.language || ""
     }];

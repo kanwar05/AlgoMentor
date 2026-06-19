@@ -40,7 +40,9 @@ export function generateRevisionPlan(problems, weakTopics) {
   const queue = new MaxPriorityQueue();
   problems.forEach((problem) => {
     const weakMatches = problem.topics.filter((topic) => weakSet.has(topic)).length;
-    const ageDays = Math.floor((Date.now() - new Date(problem.solvedDate)) / 86_400_000);
+    const ageDays = problem.solvedDate
+      ? Math.floor((Date.now() - new Date(problem.solvedDate)) / 86_400_000)
+      : 0;
     const priority =
       weakMatches * 4 +
       difficultyWeight[problem.difficulty] +

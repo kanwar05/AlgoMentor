@@ -29,8 +29,7 @@ export async function upsertSyncedProblems(userId, platform, records) {
           $setOnInsert: {
             userId,
             platform,
-            platformProblemId,
-            ...(!record.solvedAt && { solvedAt: new Date() })
+            platformProblemId
           }
         },
         upsert: true

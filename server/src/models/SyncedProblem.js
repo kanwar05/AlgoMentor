@@ -10,7 +10,7 @@ const syncedProblemSchema = new mongoose.Schema(
     difficulty: { type: String, enum: ["Easy", "Medium", "Hard"], default: "Medium" },
     topics: [{ type: String, trim: true }],
     status: { type: String, enum: ["Solved", "Revision", "Weak"], default: "Solved" },
-    solvedAt: { type: Date, required: true, default: Date.now },
+    solvedAt: { type: Date, default: null },
     submissionId: { type: String, trim: true, default: "" },
     problemUrl: { type: String, trim: true, default: "" },
     language: { type: String, trim: true, default: "" },

@@ -39,6 +39,7 @@ export function detectWeakTopics(topicStats) {
 function buildActivity(problems, days = 120) {
   const counts = new Map();
   problems.forEach((problem) => {
+    if (!problem.solvedDate) return;
     const key = dateKey(problem.solvedDate);
     counts.set(key, (counts.get(key) || 0) + 1);
   });
