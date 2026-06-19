@@ -1,4 +1,5 @@
 import Problem from "../models/Problem.js";
+import SyncedProblem from "../models/SyncedProblem.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { HttpError } from "../utils/httpError.js";
 
@@ -14,20 +15,79 @@ const sanitizeProblem = (body) => ({
 });
 
 export const listProblems = asyncHandler(async (req, res) => {
-  const { search = "", difficulty, status, topic, page = 1, limit = 50 } = req.query;
-  const filter = { user: req.user._id };
-  if (search) filter.title = { $regex: search, $options: "i" };
-  if (difficulty) filter.difficulty = difficulty;
-  if (status) filter.status = status;
-  if (topic) filter.topics = topic;
+  const { search = "", difficulty, status, topic, platform, page = 1, limit = 50 } = req.query;
+  const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
+  const safePage = Math.max(Number(page) || 1, 1);
+  const commonMatch = {};
+  if (search) commonMatch.title = { $regex: search, $options: "i" };
+  if (difficulty) commonMatch.difficulty = difficulty;
+  if (status) commonMatch.status = status;
+  if (topic) commonMatch.topics = topic;
+  if (platform) commonMatch.platform = platform;
 
-  const safeLimit = Math.min(Number(limit) || 50, 100);
-  const skip = (Math.max(Number(page), 1) - 1) * safeLimit;
-  const [problems, total] = await Promise.all([
-    Problem.find(filter).sort({ solvedDate: -1 }).skip(skip).limit(safeLimit),
-    Problem.countDocuments(filter)
-  ]);
-  res.json({ problems, pagination: { total, page: Number(page), limit: safeLimit, pages: Math.ceil(total / safeLimit) } });
+  const manualPipeline = [
+    { $match: { user: req.user._id, ...commonMatch } },
+    {
+      $project: {
+        _id: 1,
+        title: 1,
+        platform: 1,
+        difficulty: 1,
+        topics: 1,
+        status: 1,
+        link: 1,
+        solvedDate: 1,
+        notes: 1,
+        source: { $literal: "manual" },
+        editable: { $literal: true }
+      }
+    },
+    {
+      $unionWith: {
+        coll: SyncedProblem.collection.name,
+        pipeline: [
+          { $match: { userId: req.user._id, ...commonMatch } },
+          {
+            $project: {
+              _id: 1,
+              title: 1,
+              platform: 1,
+              difficulty: 1,
+              topics: 1,
+              status: 1,
+              link: "$problemUrl",
+              solvedDate: "$solvedAt",
+              language: 1,
+              verdict: 1,
+              rating: 1,
+              source: { $literal: "synced" },
+              editable: { $literal: false }
+            }
+          }
+        ]
+      }
+    },
+    { $sort: { solvedDate: -1, _id: -1 } },
+    {
+      $facet: {
+        problems: [{ $skip: (safePage - 1) * safeLimit }, { $limit: safeLimit }],
+        metadata: [{ $count: "total" }]
+      }
+    }
+  ];
+
+  const [result] = await Problem.aggregate(manualPipeline);
+  const problems = result?.problems || [];
+  const total = result?.metadata?.[0]?.total || 0;
+  res.json({
+    problems,
+    pagination: {
+      total,
+      page: safePage,
+      limit: safeLimit,
+      pages: Math.ceil(total / safeLimit)
+    }
+  });
 });
 
 export const createProblem = asyncHandler(async (req, res) => {
