@@ -4,7 +4,7 @@ import SyncedProblem from "../models/SyncedProblem.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { generateAnalytics } from "../services/analyticsService.js";
 import { recommendProblems } from "../services/recommendationService.js";
-import { generateRevisionPlan } from "../services/revisionService.js";
+import { completeRevisionTask, generateRevisionPlan } from "../services/revisionService.js";
 import { generateRoadmap } from "../services/roadmapService.js";
 
 async function loadContext(user) {
@@ -62,7 +62,16 @@ export const getRoadmap = asyncHandler(async (req, res) => {
 
 export const getRevisionPlan = asyncHandler(async (req, res) => {
   const { problems, analytics } = await loadContext(req.user);
-  res.json(generateRevisionPlan(problems, analytics.weakTopics));
+  res.json(await generateRevisionPlan(req.user._id, problems, analytics.weakTopics));
+});
+
+export const completeRevisionPlanTask = asyncHandler(async (req, res) => {
+  const task = await completeRevisionTask({
+    taskId: req.params.taskId,
+    userId: req.user._id,
+    result: req.body.result || "solved"
+  });
+  res.json({ task });
 });
 
 export const getRecommendations = asyncHandler(async (req, res) => {
