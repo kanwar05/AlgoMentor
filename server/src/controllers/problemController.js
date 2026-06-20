@@ -2,12 +2,13 @@ import Problem from "../models/Problem.js";
 import SyncedProblem from "../models/SyncedProblem.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { HttpError } from "../utils/httpError.js";
+import { normalizeTopic, normalizeTopics } from "../utils/topicNormalizer.js";
 
 const sanitizeProblem = (body) => ({
   title: body.title,
   platform: body.platform,
   difficulty: body.difficulty,
-  topics: Array.isArray(body.topics) ? body.topics : [body.topic].filter(Boolean),
+  topics: normalizeTopics(Array.isArray(body.topics) ? body.topics : body.topic),
   status: body.status,
   link: body.link,
   solvedDate: body.solvedDate,
@@ -22,7 +23,7 @@ export const listProblems = asyncHandler(async (req, res) => {
   if (search) commonMatch.title = { $regex: search, $options: "i" };
   if (difficulty) commonMatch.difficulty = difficulty;
   if (status) commonMatch.status = status;
-  if (topic) commonMatch.topics = topic;
+  if (topic) commonMatch.topics = normalizeTopic(topic);
   if (platform) commonMatch.platform = platform;
 
   const manualPipeline = [

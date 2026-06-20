@@ -1,4 +1,5 @@
 import SyncedProblem from "../models/SyncedProblem.js";
+import { normalizeTopics } from "../utils/topicNormalizer.js";
 
 export async function upsertSyncedProblems(userId, platform, records) {
   if (!records.length) {
@@ -6,7 +7,11 @@ export async function upsertSyncedProblems(userId, platform, records) {
     return { imported: 0, skipped: 0, totalSynced };
   }
 
-  const uniqueRecords = [...new Map(records.map((record) => [record.platformProblemId, record])).values()];
+  const normalizedRecords = records.map((record) => ({
+    ...record,
+    topics: normalizeTopics(record.topics)
+  }));
+  const uniqueRecords = [...new Map(normalizedRecords.map((record) => [record.platformProblemId, record])).values()];
   const inputDuplicates = records.length - uniqueRecords.length;
   const ids = uniqueRecords.map((record) => record.platformProblemId);
   const existing = await SyncedProblem.find({
