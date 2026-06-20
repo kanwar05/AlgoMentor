@@ -1,6 +1,6 @@
-import { ArrowRight, BookOpenCheck, BrainCircuit, Code2, Flame, Target, TrendingUp, TriangleAlert } from "lucide-react";
+import { ArrowRight, BookOpenCheck, BrainCircuit, CircleCheck, CircleDashed, Code2, Flame, Sprout, Target, TrendingUp, TriangleAlert } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { Area, AreaChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import Heatmap from "../components/Heatmap";
 import LoadingState from "../components/LoadingState";
 import PageHeader from "../components/PageHeader";
@@ -13,7 +13,28 @@ export default function DashboardPage() {
   const { data, loading, error } = useRemoteData("/analytics", demoAnalytics);
   if (loading) return <LoadingState />;
   if (error) return <p className="card text-rose-500">{error}</p>;
-  const { summary, weeklyActivity, weakTopics, activity } = data;
+  const {
+    summary,
+    weeklyActivity,
+    weakTopics = [],
+    practicingTopics = [],
+    untouchedTopics = [],
+    strongTopics = [],
+    activity
+  } = data;
+  const priorityTopics = [...weakTopics, ...practicingTopics, ...untouchedTopics];
+  const distribution = [
+    { name: "Strong", value: strongTopics.length, color: "#34d399" },
+    { name: "Weak", value: weakTopics.length, color: "#fb7185" },
+    { name: "Practicing", value: practicingTopics.length, color: "#a78bfa" },
+    { name: "Untouched", value: untouchedTopics.length, color: "#cbd5e1" }
+  ];
+  const topicSections = [
+    { title: "Strong Topics", items: strongTopics, icon: CircleCheck, color: "text-emerald-500", empty: "No mastered topics yet" },
+    { title: "Weak Topics", items: weakTopics, icon: TriangleAlert, color: "text-rose-500", empty: "No confirmed weak topics" },
+    { title: "Practicing Topics", items: practicingTopics, icon: Sprout, color: "text-violet-500", empty: "No topics in early practice" },
+    { title: "Untouched Topics", items: untouchedTopics, icon: CircleDashed, color: "text-slate-400", empty: "Full topic coverage achieved" }
+  ];
   const cards = [
     { label: "Problems solved", value: summary.totalSolved, note: `${summary.solvedThisWeek} this week`, icon: BookOpenCheck, color: "bg-violet-100 text-violet-600 dark:bg-violet-400/10" },
     { label: "LeetCode solved", value: summary.leetcodeSolved || 0, note: "Synced + manually logged", icon: Code2, color: "bg-amber-100 text-amber-600 dark:bg-amber-400/10" },
@@ -37,13 +58,16 @@ export default function DashboardPage() {
         </div>
         <div className="card bg-ink text-white dark:bg-[#181a1f]">
           <div className="flex items-center justify-between"><div><p className="font-display text-lg font-bold">Mentor signal</p><p className="text-xs text-white/40">Highest-leverage focus</p></div><BrainCircuit className="text-lime-400" /></div>
-          <div className="mt-6 rounded-2xl bg-white/[.07] p-4"><p className="text-xs font-bold uppercase tracking-wider text-lime-400">Focus next</p><p className="mt-2 font-display text-2xl font-extrabold">{weakTopics[0]?.topic || "Build consistency"}</p><p className="mt-2 text-sm leading-6 text-white/55">{weakTopics[0]?.reasons?.[0] || "Log more practice to unlock a sharper recommendation."}</p></div>
+          <div className="mt-6 rounded-2xl bg-white/[.07] p-4"><p className="text-xs font-bold uppercase tracking-wider text-lime-400">Focus next</p><p className="mt-2 font-display text-2xl font-extrabold">{priorityTopics[0]?.topic || "Build consistency"}</p><p className="mt-2 text-sm leading-6 text-white/55">{priorityTopics[0]?.reasons?.[0] || (priorityTopics[0]?.status === "practicing" ? "Keep building exposure until the signal becomes reliable." : priorityTopics[0]?.status === "untouched" ? "Start this topic to close an important coverage gap." : "Log more practice to unlock a sharper recommendation.")}</p></div>
           <Link to="/app/roadmap" className="mt-4 flex items-center justify-between rounded-2xl bg-violet-400 p-4 font-bold text-ink">Open learning path <ArrowRight size={18} /></Link>
         </div>
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.5fr_1fr]">
         <div className="card"><div className="mb-5 flex items-center justify-between"><div><p className="font-display text-lg font-bold">Consistency map</p><p className="text-xs text-slate-400">Small squares, compounding wins</p></div><Flame size={20} className="text-orange-500" /></div><Heatmap activity={activity} /></div>
-        <div className="card"><div className="flex items-center justify-between"><div><p className="font-display text-lg font-bold">Weak topics</p><p className="text-xs text-slate-400">Detected from volume and revision status</p></div><TriangleAlert size={20} className="text-rose-500" /></div><div className="mt-4 space-y-3">{weakTopics.slice(0, 3).map((item) => <div key={item.topic}><div className="mb-1.5 flex justify-between text-sm"><span className="font-bold">{item.topic}</span><span className="text-slate-400">{item.total} solved</span></div><div className="h-1.5 rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full rounded-full bg-rose-400" style={{ width: `${item.severity}%` }} /></div></div>)}</div></div>
+        <div className="card"><div><p className="font-display text-lg font-bold">Topic distribution</p><p className="text-xs text-slate-400">Mastery, active learning, weakness, and coverage gaps</p></div><div className="mt-2 h-48"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={distribution} dataKey="value" innerRadius={48} outerRadius={75} paddingAngle={3}>{distribution.map((item) => <Cell key={item.name} fill={item.color} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer></div><div className="grid grid-cols-2 gap-2">{distribution.map((item) => <div key={item.name} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-xs dark:bg-white/[.04]"><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />{item.name}</span><strong>{item.value}</strong></div>)}</div></div>
+      </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {topicSections.map(({ title, items, icon: Icon, color, empty }) => <section key={title} className="card"><div className="flex items-center justify-between"><div><p className="font-display font-bold">{title}</p><p className="text-xs text-slate-400">{items.length} topics</p></div><Icon size={20} className={color} /></div><div className="mt-4 space-y-2">{items.length ? items.slice(0, 5).map((item) => <div key={item.topic} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-white/[.04]"><span className="truncate font-semibold">{item.topic}</span><span className="ml-2 text-xs text-slate-400">{item.total}</span></div>) : <p className="text-sm text-slate-400">{empty}</p>}</div></section>)}
       </div>
     </>
   );

@@ -36,8 +36,20 @@ function traverseFrom(start, limit = 5) {
   return order;
 }
 
-export function generateRoadmap(weakTopics) {
-  const focus = weakTopics.slice(0, 4).map((item) => item.topic);
+export function generateRoadmap(topicStats = []) {
+  const priority = { weak: 0, practicing: 1, untouched: 2, strong: 3 };
+  const candidates = [...topicStats]
+    .filter((item) => item.status !== "strong")
+    .sort((a, b) =>
+      priority[a.status] - priority[b.status] ||
+      (b.severity || Math.max(b.weakRatio || 0, b.revisionRatio || 0) * 100) -
+        (a.severity || Math.max(a.weakRatio || 0, a.revisionRatio || 0) * 100) ||
+      b.total - a.total ||
+      a.topic.localeCompare(b.topic)
+    );
+  const focusItems = candidates.slice(0, 4);
+  const focus = focusItems.map((item) => item.topic);
+  const focusStatus = Object.fromEntries(focusItems.map((item) => [item.topic, item.status]));
   const ordered = [];
   const seen = new Set();
   focus.forEach((topic) => {
@@ -54,15 +66,21 @@ export function generateRoadmap(weakTopics) {
 
   return {
     focusTopics: focus,
+    focusDetails: focusItems.map((item) => ({ topic: item.topic, status: item.status })),
     path: ordered.slice(0, 12).map((topic, index) => ({
       order: index + 1,
       topic,
       description: topicDescriptions[topic] || `Strengthen core patterns and problem-solving fluency in ${topic}.`,
       status: focus.includes(topic) ? "focus" : index === 0 ? "start" : "upcoming",
+      topicStatus: focusStatus[topic] || null,
       estimatedHours: index < 3 ? 3 : 5
     })),
     graph: {
-      nodes: Object.keys(topicGraph).map((id) => ({ id, weak: focus.includes(id) })),
+      nodes: Object.keys(topicGraph).map((id) => ({
+        id,
+        weak: focusStatus[id] === "weak",
+        status: focusStatus[id] || null
+      })),
       edges: Object.entries(topicGraph).flatMap(([source, targets]) => targets.map((target) => ({ source, target })))
     }
   };

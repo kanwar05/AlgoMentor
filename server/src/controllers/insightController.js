@@ -47,13 +47,13 @@ export const getAnalytics = asyncHandler(async (req, res) => {
 
 export const getRoadmap = asyncHandler(async (req, res) => {
   const { analytics } = await loadContext(req.user);
-  const roadmap = generateRoadmap(analytics.weakTopics);
+  const roadmap = generateRoadmap(analytics.allTopicStats);
 
   if (req.query.explain === "true" && process.env.OPENAI_API_KEY) {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await client.responses.create({
       model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-      input: `In 120 words or less, coach a DSA student whose weak topics are ${roadmap.focusTopics.join(", ")}. Explain why this learning sequence works: ${roadmap.path.map((step) => step.topic).join(" -> ")}. Be practical and encouraging.`
+      input: `In 120 words or less, coach a DSA student whose priority topics are ${roadmap.focusTopics.join(", ")}. Explain why this learning sequence works: ${roadmap.path.map((step) => step.topic).join(" -> ")}. Be practical and encouraging.`
     });
     roadmap.aiExplanation = response.output_text;
   }
