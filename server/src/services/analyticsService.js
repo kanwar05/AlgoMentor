@@ -1,4 +1,5 @@
 import { TOPICS } from "../models/Problem.js";
+import { classifyTopic } from "../utils/topicClassifier.js";
 import { normalizeTopics } from "../utils/topicNormalizer.js";
 
 const DAY = 86_400_000;
@@ -16,25 +17,51 @@ export function buildTopicStats(problems) {
       entry[problem.status.toLowerCase()] += 1;
     }
   }
-  return [...map.values()];
+  return [...map.values()].map((stat) => {
+    const weakRatio = stat.total ? stat.weak / stat.total : 0;
+    const revisionRatio = stat.total ? stat.revision / stat.total : 0;
+    return {
+      ...stat,
+      totalSolved: stat.total,
+      weakCount: stat.weak,
+      revisionCount: stat.revision,
+      weakRatio,
+      revisionRatio,
+      status: classifyTopic({
+        totalSolved: stat.total,
+        weakCount: stat.weak,
+        revisionCount: stat.revision
+      })
+    };
+  });
 }
 
 export function detectWeakTopics(topicStats) {
   return topicStats
-    .map((stat) => {
-      const flagged = stat.revision + stat.weak;
-      const flaggedRatio = stat.total ? flagged / stat.total : 0;
-      const reasons = [];
-      if (stat.total < 5) reasons.push(`Only ${stat.total}/5 foundation problems completed`);
-      if (flagged >= 2 || flaggedRatio >= 0.4) reasons.push(`${flagged} problem${flagged === 1 ? "" : "s"} need attention`);
-      return {
-        ...stat,
-        severity: clamp(Math.round((5 - Math.min(stat.total, 5)) * 12 + flaggedRatio * 50)),
-        reasons
-      };
-    })
-    .filter((stat) => stat.reasons.length > 0)
+    .filter((stat) => stat.status === "weak")
+    .map((stat) => ({
+      ...stat,
+      severity: clamp(Math.round(Math.max(stat.weakRatio, stat.revisionRatio) * 100)),
+      reasons: [
+        stat.weakRatio >= 0.4
+          ? `${Math.round(stat.weakRatio * 100)}% marked weak`
+          : `${Math.round(stat.revisionRatio * 100)}% marked for revision`
+      ]
+    }))
     .sort((a, b) => b.severity - a.severity || a.topic.localeCompare(b.topic));
+}
+
+function topicsByStatus(topicStats, status) {
+  return topicStats
+    .filter((item) => item.status === status)
+    .sort((a, b) => {
+      if (status === "weak") {
+        return Math.max(b.weakRatio, b.revisionRatio) - Math.max(a.weakRatio, a.revisionRatio);
+      }
+      if (status === "practicing") return b.total - a.total || a.topic.localeCompare(b.topic);
+      if (status === "strong") return b.total - a.total || a.topic.localeCompare(b.topic);
+      return a.topic.localeCompare(b.topic);
+    });
 }
 
 function buildActivity(problems, days = 120) {
@@ -75,14 +102,17 @@ function calculateStreak(activity) {
 }
 
 // Dynamic scoring combines normalized readiness signals into a transparent 0–100 score.
-export function calculateReadiness(problems, topicStats, weakTopics, activity) {
+export function calculateReadiness(problems, topicStats, _weakTopics, activity) {
   const total = problems.length;
-  const attemptedTopics = topicStats.filter((item) => item.total > 0).length;
   const mediumHard = problems.filter((item) => item.difficulty !== "Easy").length;
   const recentActiveDays = activity.slice(-28).filter((day) => day.count > 0).length;
+  const topicStateWeight = { strong: 100, practicing: 65, weak: 15, untouched: 0 };
+  const topicCoverage = topicStats.length
+    ? topicStats.reduce((sum, item) => sum + topicStateWeight[item.status], 0) / topicStats.length
+    : 0;
 
   const breakdown = {
-    topicCoverage: clamp((attemptedTopics / TOPICS.length) * 100 - weakTopics.length * 1.5),
+    topicCoverage: clamp(topicCoverage),
     difficultyBalance: total ? clamp((mediumHard / total) * 125) : 0,
     consistency: clamp((recentActiveDays / 16) * 100),
     totalSolvedScore: clamp((total / 100) * 100)
@@ -100,6 +130,9 @@ export function calculateReadiness(problems, topicStats, weakTopics, activity) {
 export function generateAnalytics(problems, weeklyGoal = 10) {
   const topicStats = buildTopicStats(problems);
   const weakTopics = detectWeakTopics(topicStats);
+  const strongTopics = topicsByStatus(topicStats, "strong");
+  const practicingTopics = topicsByStatus(topicStats, "practicing");
+  const untouchedTopics = topicsByStatus(topicStats, "untouched");
   const activity = buildActivity(problems);
   const streak = calculateStreak(activity);
   const difficulty = { Easy: 0, Medium: 0, Hard: 0 };
@@ -107,6 +140,12 @@ export function generateAnalytics(problems, weeklyGoal = 10) {
   const last7 = activity.slice(-7);
   const solvedThisWeek = last7.reduce((sum, day) => sum + day.count, 0);
   const readiness = calculateReadiness(problems, topicStats, weakTopics, activity);
+  const topicDistribution = {
+    strong: strongTopics.length,
+    weak: weakTopics.length,
+    practicing: practicingTopics.length,
+    untouched: untouchedTopics.length
+  };
   const platformCounts = problems.reduce((counts, problem) => {
     const platform = problem.platform || "Other";
     counts[platform] = (counts[platform] || 0) + 1;
@@ -124,11 +163,19 @@ export function generateAnalytics(problems, weeklyGoal = 10) {
       solvedThisWeek,
       weeklyGoal,
       weeklyProgress: clamp(Math.round((solvedThisWeek / weeklyGoal) * 100)),
-      readinessScore: readiness.score
+      readinessScore: readiness.score,
+      topicDistribution
     },
     readiness,
-    topicStats: topicStats.filter((item) => item.total > 0).sort((a, b) => b.total - a.total),
+    topicStats: topicStats
+      .filter((item) => item.total > 0)
+      .sort((a, b) => b.total - a.total || a.topic.localeCompare(b.topic)),
+    allTopicStats: [...topicStats].sort((a, b) => b.total - a.total || a.topic.localeCompare(b.topic)),
     weakTopics: weakTopics.slice(0, 8),
+    practicingTopics,
+    untouchedTopics,
+    strongTopics,
+    topicDistribution,
     activity,
     weeklyActivity: last7
   };

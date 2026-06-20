@@ -4,9 +4,11 @@ import { validateManualImport } from "../src/controllers/syncController.js";
 import Problem from "../src/models/Problem.js";
 import { normalizeAcceptedCodeforcesSubmissions } from "../src/services/codeforcesSync.service.js";
 import { fetchLeetCodeAccepted } from "../src/services/leetcodeSync.service.js";
-import { buildTopicStats, generateAnalytics } from "../src/services/analyticsService.js";
+import { buildTopicStats, calculateReadiness, generateAnalytics } from "../src/services/analyticsService.js";
 import { mapCodeforcesTopics, mapLeetCodeTopics } from "../src/services/platformTopicMapping.js";
 import { recommendProblems } from "../src/services/recommendationService.js";
+import { generateRoadmap } from "../src/services/roadmapService.js";
+import { classifyTopic } from "../src/utils/topicClassifier.js";
 import { normalizeTopic, normalizeTopics } from "../src/utils/topicNormalizer.js";
 
 const submission = (overrides = {}) => ({
@@ -86,6 +88,16 @@ test("analytics groups equivalent topics under one canonical name", () => {
   assert.equal(stats.find((item) => item.topic === "Array").total, 2);
   assert.equal(stats.find((item) => item.topic === "Hash Map").total, 2);
   assert.equal(stats.some((item) => item.topic === "Arrays"), false);
+  assert.equal(stats.find((item) => item.topic === "Array").status, "practicing");
+  assert.equal(stats.find((item) => item.topic === "Array").totalSolved, 2);
+});
+
+test("topic classifier distinguishes untouched, practicing, weak, and strong", () => {
+  assert.equal(classifyTopic({ totalSolved: 0, weakCount: 0, revisionCount: 0 }), "untouched");
+  assert.equal(classifyTopic({ totalSolved: 3, weakCount: 0, revisionCount: 0 }), "practicing");
+  assert.equal(classifyTopic({ totalSolved: 8, weakCount: 4, revisionCount: 0 }), "weak");
+  assert.equal(classifyTopic({ totalSolved: 5, weakCount: 0, revisionCount: 2 }), "weak");
+  assert.equal(classifyTopic({ totalSolved: 10, weakCount: 1, revisionCount: 2 }), "strong");
 });
 
 test("weak-topic and readiness calculations do not split equivalent topics", () => {
@@ -106,10 +118,41 @@ test("weak-topic and readiness calculations do not split equivalent topics", () 
     { ...base, title: "Three", topics: ["Array"] }
   ], 10);
 
-  assert.deepEqual(aliases.topicStats.map((item) => item.topic), ["Array"]);
-  assert.equal(aliases.topicStats[0].total, 3);
+  assert.deepEqual(aliases.topicStats.filter((item) => item.total > 0).map((item) => item.topic), ["Array"]);
+  assert.equal(aliases.topicStats.find((item) => item.topic === "Array").total, 3);
   assert.deepEqual(aliases.weakTopics, canonical.weakTopics);
   assert.deepEqual(aliases.readiness, canonical.readiness);
+});
+
+test("readiness rewards strong topics over weak, practicing, and untouched topics", () => {
+  const activity = Array.from({ length: 28 }, () => ({ count: 0 }));
+  const makeStats = (status) => [{ status }];
+  const problems = Array.from({ length: 10 }, () => ({ difficulty: "Medium" }));
+
+  const strong = calculateReadiness(problems, makeStats("strong"), [], activity);
+  const practicing = calculateReadiness(problems, makeStats("practicing"), [], activity);
+  const weak = calculateReadiness(problems, makeStats("weak"), [], activity);
+  const untouched = calculateReadiness(problems, makeStats("untouched"), [], activity);
+
+  assert.ok(strong.score > practicing.score);
+  assert.ok(practicing.score > weak.score);
+  assert.ok(weak.score > untouched.score);
+});
+
+test("roadmap prioritizes weak, then practicing, then untouched topics", () => {
+  const roadmap = generateRoadmap([
+    { topic: "Array", status: "strong", total: 10 },
+    { topic: "Graph", status: "untouched", total: 0 },
+    { topic: "Sliding Window", status: "practicing", total: 3 },
+    { topic: "Dynamic Programming", status: "weak", total: 8, weakRatio: 0.5, revisionRatio: 0 }
+  ]);
+
+  assert.deepEqual(roadmap.focusDetails, [
+    { topic: "Dynamic Programming", status: "weak" },
+    { topic: "Sliding Window", status: "practicing" },
+    { topic: "Graph", status: "untouched" }
+  ]);
+  assert.equal(roadmap.focusTopics.includes("Array"), false);
 });
 
 test("recommendations match weak topics through normalized aliases", () => {

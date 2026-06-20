@@ -8,7 +8,7 @@ export const demoUser = {
 };
 
 export const demoProblems = [
-  ["Two Sum", "LeetCode", "Easy", ["Array", "Hashing"], "Solved", 0],
+  ["Two Sum", "LeetCode", "Easy", ["Array", "Hash Map"], "Solved", 0],
   ["Longest Substring Without Repeating", "LeetCode", "Medium", ["String", "Sliding Window"], "Revision", 1],
   ["Number of Islands", "LeetCode", "Medium", ["Graph", "BFS/DFS"], "Weak", 2],
   ["Reverse Linked List", "LeetCode", "Easy", ["Linked List"], "Solved", 4],
@@ -30,32 +30,50 @@ const activity = Array.from({ length: 120 }, (_, i) => ({
   count: [0, 0, 1, 0, 2, 1, 0, 3, 0, 1][i % 10]
 }));
 
+const demoStrongTopics = [
+  { topic: "Array", total: 16, totalSolved: 16, solved: 13, revision: 2, weak: 1, revisionCount: 2, weakCount: 1, revisionRatio: .125, weakRatio: .0625, status: "strong" },
+  { topic: "Hash Map", total: 11, totalSolved: 11, solved: 9, revision: 2, weak: 0, revisionCount: 2, weakCount: 0, revisionRatio: .18, weakRatio: 0, status: "strong" },
+  { topic: "Tree", total: 9, totalSolved: 9, solved: 7, revision: 1, weak: 1, revisionCount: 1, weakCount: 1, revisionRatio: .11, weakRatio: .11, status: "strong" }
+];
+const demoWeakTopics = [
+  { topic: "Dynamic Programming", total: 8, totalSolved: 8, solved: 2, revision: 2, weak: 4, revisionCount: 2, weakCount: 4, revisionRatio: .25, weakRatio: .5, status: "weak", severity: 50, reasons: ["50% marked weak"] },
+  { topic: "Graph", total: 7, totalSolved: 7, solved: 3, revision: 1, weak: 3, revisionCount: 1, weakCount: 3, revisionRatio: .14, weakRatio: .43, status: "weak", severity: 43, reasons: ["43% marked weak"] }
+];
+const demoPracticingTopics = [
+  { topic: "Sliding Window", total: 4, totalSolved: 4, solved: 3, revision: 1, weak: 0, revisionCount: 1, weakCount: 0, revisionRatio: .25, weakRatio: 0, status: "practicing" },
+  { topic: "Backtracking", total: 3, totalSolved: 3, solved: 2, revision: 1, weak: 0, revisionCount: 1, weakCount: 0, revisionRatio: .33, weakRatio: 0, status: "practicing" }
+];
+const demoUntouchedTopics = ["Heap", "Trie", "MST", "Bit Manipulation"].map((topic) => ({
+  topic, total: 0, totalSolved: 0, solved: 0, revision: 0, weak: 0,
+  revisionCount: 0, weakCount: 0, revisionRatio: 0, weakRatio: 0, status: "untouched"
+}));
+
 export const demoAnalytics = {
   summary: {
     totalSolved: 64, difficulty: { Easy: 21, Medium: 36, Hard: 7 },
     streak: { current: 6, longest: 14 }, solvedThisWeek: 9, weeklyGoal: 12,
-    weeklyProgress: 75, readinessScore: 72
+    weeklyProgress: 75, readinessScore: 72,
+    topicDistribution: { strong: 3, weak: 2, practicing: 2, untouched: 4 }
   },
   readiness: { score: 72, breakdown: { topicCoverage: 76, difficultyBalance: 84, consistency: 69, totalSolvedScore: 64 } },
-  topicStats: [
-    { topic: "Array", total: 16, solved: 13, revision: 2, weak: 1 },
-    { topic: "Hashing", total: 11, solved: 9, revision: 2, weak: 0 },
-    { topic: "Tree", total: 9, solved: 7, revision: 1, weak: 1 },
-    { topic: "Graph", total: 4, solved: 2, revision: 1, weak: 1 },
-    { topic: "Dynamic Programming", total: 3, solved: 1, revision: 1, weak: 1 },
-    { topic: "Sliding Window", total: 4, solved: 2, revision: 2, weak: 0 }
-  ],
-  weakTopics: [
-    { topic: "Dynamic Programming", total: 3, revision: 1, weak: 1, severity: 74, reasons: ["Only 3/5 foundation problems completed", "2 problems need attention"] },
-    { topic: "Graph", total: 4, revision: 1, weak: 1, severity: 61, reasons: ["Only 4/5 foundation problems completed", "2 problems need attention"] },
-    { topic: "Sliding Window", total: 4, revision: 2, weak: 0, severity: 57, reasons: ["Only 4/5 foundation problems completed", "2 problems need attention"] }
-  ],
+  topicStats: [...demoStrongTopics, ...demoWeakTopics, ...demoPracticingTopics],
+  allTopicStats: [...demoStrongTopics, ...demoWeakTopics, ...demoPracticingTopics, ...demoUntouchedTopics],
+  strongTopics: demoStrongTopics,
+  weakTopics: demoWeakTopics,
+  practicingTopics: demoPracticingTopics,
+  untouchedTopics: demoUntouchedTopics,
+  topicDistribution: { strong: 3, weak: 2, practicing: 2, untouched: 4 },
   activity,
   weeklyActivity: activity.slice(-7)
 };
 
 export const demoRoadmap = {
   focusTopics: ["Dynamic Programming", "Graph", "Sliding Window"],
+  focusDetails: [
+    { topic: "Dynamic Programming", status: "weak" },
+    { topic: "Graph", status: "weak" },
+    { topic: "Sliding Window", status: "practicing" }
+  ],
   path: [
     ["Recursion", "Build the mental model for states, base cases, and repeated work."],
     ["Backtracking", "Learn to explore decision trees before optimizing repeated branches."],
