@@ -6,6 +6,7 @@ import { mapLeetCodeTopics, normalizeDifficulty, slugify } from "../services/pla
 import { upsertSyncedProblems } from "../services/syncPersistence.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { HttpError } from "../utils/httpError.js";
+import { normalizeTopics } from "../utils/topicNormalizer.js";
 
 async function recordHistory(userId, platform, status, result = {}, message = "") {
   return SyncHistory.create({
@@ -122,7 +123,7 @@ export function validateManualImport(items) {
       difficulty: normalizeDifficulty(item.difficulty),
       topics: platform === "LeetCode"
         ? mapLeetCodeTopics(rawTopics)
-        : [...new Set(rawTopics.map((topic) => typeof topic === "string" ? topic : topic.name).filter(Boolean))],
+        : normalizeTopics(rawTopics.map((topic) => typeof topic === "string" ? topic : topic.name)),
       status: "Solved",
       solvedAt,
       submissionId: String(item.submissionId || ""),

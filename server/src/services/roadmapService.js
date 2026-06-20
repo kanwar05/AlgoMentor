@@ -49,7 +49,7 @@ export function generateRoadmap(weakTopics) {
     });
   });
 
-  const fallback = ["Array", "Hashing", "Sliding Window", "Tree", "Graph", "BFS/DFS", "Dynamic Programming"];
+  const fallback = ["Array", "Hash Map", "Sliding Window", "Tree", "Graph", "BFS/DFS", "Dynamic Programming"];
   (ordered.length ? [] : fallback).forEach((item) => ordered.push(item));
 
   return {

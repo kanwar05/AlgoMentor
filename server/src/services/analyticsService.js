@@ -1,4 +1,5 @@
 import { TOPICS } from "../models/Problem.js";
+import { normalizeTopics } from "../utils/topicNormalizer.js";
 
 const DAY = 86_400_000;
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, value));
@@ -8,7 +9,7 @@ const dateKey = (date) => new Date(date).toISOString().slice(0, 10);
 export function buildTopicStats(problems) {
   const map = new Map(TOPICS.map((topic) => [topic, { topic, total: 0, solved: 0, revision: 0, weak: 0 }]));
   for (const problem of problems) {
-    for (const topic of problem.topics) {
+    for (const topic of normalizeTopics(problem.topics)) {
       if (!map.has(topic)) map.set(topic, { topic, total: 0, solved: 0, revision: 0, weak: 0 });
       const entry = map.get(topic);
       entry.total += 1;

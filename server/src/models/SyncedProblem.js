@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { normalizeTopics } from "../utils/topicNormalizer.js";
 
 const syncedProblemSchema = new mongoose.Schema(
   {
@@ -8,7 +9,7 @@ const syncedProblemSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true, maxlength: 200 },
     slug: { type: String, trim: true, default: "" },
     difficulty: { type: String, enum: ["Easy", "Medium", "Hard"], default: "Medium" },
-    topics: [{ type: String, trim: true }],
+    topics: { type: [{ type: String, trim: true }], set: normalizeTopics },
     status: { type: String, enum: ["Solved", "Revision", "Weak"], default: "Solved" },
     solvedAt: { type: Date, default: null },
     submissionId: { type: String, trim: true, default: "" },

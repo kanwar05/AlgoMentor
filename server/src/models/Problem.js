@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
+import { normalizeTopics } from "../utils/topicNormalizer.js";
 
 export const TOPICS = [
-  "Array", "String", "Hashing", "Two Pointers", "Sliding Window",
+  "Array", "String", "Hash Map", "Two Pointers", "Sliding Window",
   "Binary Search", "Linked List", "Stack", "Queue", "Recursion",
   "Backtracking", "Tree", "BST", "Heap", "Graph", "BFS/DFS",
   "Dijkstra", "MST", "Dynamic Programming", "Greedy", "Bit Manipulation",
-  "Arrays", "Basic Programming", "Graphs", "Trees", "Strings",
-  "Data Structures", "Trie", "Heap / Priority Queue"
+  "Basic Programming", "Data Structures", "Trie"
 ];
 
 const problemSchema = new mongoose.Schema(
@@ -15,7 +15,7 @@ const problemSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true, maxlength: 160 },
     platform: { type: String, required: true, trim: true, maxlength: 50 },
     difficulty: { type: String, enum: ["Easy", "Medium", "Hard"], required: true },
-    topics: [{ type: String, trim: true }],
+    topics: { type: [{ type: String, trim: true }], set: normalizeTopics },
     status: { type: String, enum: ["Solved", "Revision", "Weak"], default: "Solved" },
     link: { type: String, trim: true, default: "" },
     solvedDate: { type: Date, required: true, default: Date.now },

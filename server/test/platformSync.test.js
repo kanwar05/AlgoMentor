@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { validateManualImport } from "../src/controllers/syncController.js";
+import Problem from "../src/models/Problem.js";
 import { normalizeAcceptedCodeforcesSubmissions } from "../src/services/codeforcesSync.service.js";
 import { fetchLeetCodeAccepted } from "../src/services/leetcodeSync.service.js";
-import { generateAnalytics } from "../src/services/analyticsService.js";
+import { buildTopicStats, generateAnalytics } from "../src/services/analyticsService.js";
 import { mapCodeforcesTopics, mapLeetCodeTopics } from "../src/services/platformTopicMapping.js";
+import { recommendProblems } from "../src/services/recommendationService.js";
+import { normalizeTopic, normalizeTopics } from "../src/utils/topicNormalizer.js";
 
 const submission = (overrides = {}) => ({
   id: 101,
@@ -43,11 +46,79 @@ test("Codeforces sync prevents duplicate contestId + index records", () => {
 
 test("platform tags map to AlgoMentor topics", () => {
   assert.deepEqual(mapCodeforcesTopics(["implementation", "dp", "shortest paths"]), [
-    "Arrays", "Basic Programming", "Dynamic Programming", "Graphs"
+    "Array", "Basic Programming", "Dynamic Programming", "Graph"
   ]);
   assert.deepEqual(mapLeetCodeTopics(["array", "hash-table", "heap-priority-queue"]), [
-    "Arrays", "Hashing", "Heap / Priority Queue"
+    "Array", "Hash Map", "Heap"
   ]);
+});
+
+test("topic normalization handles aliases safely and removes duplicates", () => {
+  assert.equal(normalizeTopic(null), "");
+  assert.equal(normalizeTopic("  ARRAYS  "), "Array");
+  assert.equal(normalizeTopic("hash-table"), "Hash Map");
+  assert.deepEqual(
+    normalizeTopics(["Array", " arrays ", "hash-table", "Hash Map", null, undefined]),
+    ["Array", "Hash Map"]
+  );
+});
+
+test("problem documents store canonical normalized topics", () => {
+  const problem = new Problem({
+    user: "507f1f77bcf86cd799439011",
+    title: "Alias test",
+    platform: "LeetCode",
+    difficulty: "Easy",
+    topics: ["Arrays", "array", "hash-table", "Hashing"]
+  });
+
+  assert.deepEqual(problem.topics, ["Array", "Hash Map"]);
+});
+
+test("analytics groups equivalent topics under one canonical name", () => {
+  const stats = buildTopicStats([
+    { topics: ["Array", "Arrays"], status: "Solved" },
+    { topics: [" arrays "], status: "Revision" },
+    { topics: ["hash-table"], status: "Solved" },
+    { topics: ["Hash Map"], status: "Weak" }
+  ]);
+
+  assert.equal(stats.find((item) => item.topic === "Array").total, 2);
+  assert.equal(stats.find((item) => item.topic === "Hash Map").total, 2);
+  assert.equal(stats.some((item) => item.topic === "Arrays"), false);
+});
+
+test("weak-topic and readiness calculations do not split equivalent topics", () => {
+  const base = {
+    platform: "LeetCode",
+    difficulty: "Medium",
+    status: "Solved",
+    solvedDate: new Date()
+  };
+  const aliases = generateAnalytics([
+    { ...base, title: "One", topics: ["Array"] },
+    { ...base, title: "Two", topics: ["Arrays"] },
+    { ...base, title: "Three", topics: ["array", "Array"] }
+  ], 10);
+  const canonical = generateAnalytics([
+    { ...base, title: "One", topics: ["Array"] },
+    { ...base, title: "Two", topics: ["Array"] },
+    { ...base, title: "Three", topics: ["Array"] }
+  ], 10);
+
+  assert.deepEqual(aliases.topicStats.map((item) => item.topic), ["Array"]);
+  assert.equal(aliases.topicStats[0].total, 3);
+  assert.deepEqual(aliases.weakTopics, canonical.weakTopics);
+  assert.deepEqual(aliases.readiness, canonical.readiness);
+});
+
+test("recommendations match weak topics through normalized aliases", () => {
+  const recommendations = recommendProblems([], [{ topic: "hash-table" }], "Other");
+  const twoSum = recommendations.find((item) => item.title === "Two Sum");
+
+  assert.ok(twoSum);
+  assert.ok(twoSum.topics.includes("Hash Map"));
+  assert.match(twoSum.reason, /Hash Map/);
 });
 
 test("readiness score updates after synced problems are added", () => {
@@ -78,7 +149,7 @@ test("manual import validates shape, platform, and URLs", () => {
     problemUrl: "https://leetcode.com/problems/two-sum/"
   }]);
   assert.equal(valid.platformProblemId, "two-sum");
-  assert.deepEqual(valid.topics, ["Arrays", "Hashing"]);
+  assert.deepEqual(valid.topics, ["Array", "Hash Map"]);
   assert.equal(valid.solvedAt, null);
 });
 
@@ -93,7 +164,7 @@ test("manual import accepts LeetCode exporter field names", () => {
   }]);
   assert.equal(valid.platformProblemId, "42");
   assert.equal(valid.slug, "trapping-rain-water");
-  assert.deepEqual(valid.topics, ["Arrays", "Dynamic Programming"]);
+  assert.deepEqual(valid.topics, ["Array", "Dynamic Programming"]);
   assert.equal(valid.solvedAt, null);
 });
 

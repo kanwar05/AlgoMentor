@@ -1,3 +1,5 @@
+import { normalizeTopics } from "../utils/topicNormalizer.js";
+
 const difficultyWeight = { Easy: 1, Medium: 3, Hard: 2.5 };
 const statusWeight = { Solved: 0.5, Revision: 3, Weak: 5 };
 
@@ -36,10 +38,11 @@ class MaxPriorityQueue {
 
 // A binary max-heap prioritizes weak/revision items and medium questions in O(log n).
 export function generateRevisionPlan(problems, weakTopics) {
-  const weakSet = new Set(weakTopics.map((item) => item.topic));
+  const weakSet = new Set(normalizeTopics(weakTopics.map((item) => item.topic)));
   const queue = new MaxPriorityQueue();
   problems.forEach((problem) => {
-    const weakMatches = problem.topics.filter((topic) => weakSet.has(topic)).length;
+    const topics = normalizeTopics(problem.topics);
+    const weakMatches = topics.filter((topic) => weakSet.has(topic)).length;
     const ageDays = problem.solvedDate
       ? Math.floor((Date.now() - new Date(problem.solvedDate)) / 86_400_000)
       : 0;
@@ -48,7 +51,7 @@ export function generateRevisionPlan(problems, weakTopics) {
       difficultyWeight[problem.difficulty] +
       statusWeight[problem.status] +
       Math.min(ageDays / 14, 2);
-    queue.push({ problem, priority });
+    queue.push({ problem: { ...problem, topics }, priority });
   });
 
   const selected = [];

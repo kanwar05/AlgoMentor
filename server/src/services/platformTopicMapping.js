@@ -1,39 +1,37 @@
+import { normalizeTopics } from "../utils/topicNormalizer.js";
+
 const codeforcesTopicMap = {
-  implementation: ["Arrays", "Basic Programming"],
+  implementation: ["Array", "Basic Programming"],
   dp: ["Dynamic Programming"],
-  graphs: ["Graphs"],
-  trees: ["Trees"],
+  graphs: ["Graph"],
+  trees: ["Tree"],
   greedy: ["Greedy"],
   "binary search": ["Binary Search"],
-  strings: ["Strings"],
+  strings: ["String"],
   "data structures": ["Data Structures"],
-  "shortest paths": ["Graphs"]
+  "shortest paths": ["Graph"]
 };
 
 const leetcodeTopicMap = {
-  array: ["Arrays"],
-  "hash-table": ["Hashing"],
+  array: ["Array"],
+  "hash-table": ["Hash Map"],
   "dynamic-programming": ["Dynamic Programming"],
-  tree: ["Trees"],
-  graph: ["Graphs"],
+  tree: ["Tree"],
+  graph: ["Graph"],
   "binary-search": ["Binary Search"],
-  string: ["Strings"],
+  string: ["String"],
   trie: ["Trie"],
-  "heap-priority-queue": ["Heap / Priority Queue"]
+  "heap-priority-queue": ["Heap"]
 };
 
-function unique(values) {
-  return [...new Set(values.filter(Boolean))];
-}
-
 export function mapCodeforcesTopics(tags = []) {
-  return unique(tags.flatMap((tag) => codeforcesTopicMap[String(tag).toLowerCase()] || [tag]));
+  return normalizeTopics(tags.flatMap((tag) => codeforcesTopicMap[String(tag).trim().toLowerCase()] || [tag]));
 }
 
 export function mapLeetCodeTopics(tags = []) {
-  return unique(tags.flatMap((tag) => {
+  return normalizeTopics(tags.flatMap((tag) => {
     const slug = typeof tag === "string" ? tag : tag?.slug || tag?.name;
-    return leetcodeTopicMap[String(slug).toLowerCase()] || [tag?.name || slug];
+    return leetcodeTopicMap[String(slug || "").trim().toLowerCase()] || [tag?.name || slug];
   }));
 }
 
