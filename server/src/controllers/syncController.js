@@ -1,5 +1,6 @@
 import SyncHistory from "../models/SyncHistory.js";
 import SyncedProblem from "../models/SyncedProblem.js";
+import mongoose from "mongoose";
 import { syncCodeforcesProblems } from "../services/codeforcesSync.service.js";
 import { syncLeetCodeProblems } from "../services/leetcodeSync.service.js";
 import { mapLeetCodeTopics, normalizeDifficulty, slugify } from "../services/platformTopicMapping.js";
@@ -124,7 +125,7 @@ export function validateManualImport(items) {
       topics: platform === "LeetCode"
         ? mapLeetCodeTopics(rawTopics)
         : normalizeTopics(rawTopics.map((topic) => typeof topic === "string" ? topic : topic.name)),
-      status: "Solved",
+      status: "Strong",
       solvedAt,
       submissionId: String(item.submissionId || ""),
       problemUrl: String(item.problemUrl || ""),
@@ -213,4 +214,46 @@ export const listSyncedProblems = asyncHandler(async (req, res) => {
     SyncedProblem.countDocuments(filter)
   ]);
   res.json({ problems, pagination: { total, page: safePage, limit: safeLimit, pages: Math.ceil(total / safeLimit) } });
+});
+
+export const updateSyncedProblemAnnotations = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    throw new HttpError(404, "Synced problem not found");
+  }
+
+  const updates = {};
+  if (req.body.status !== undefined) {
+    if (!["Strong", "Revision", "Weak"].includes(req.body.status)) {
+      throw new HttpError(400, "Status must be Strong, Revision, or Weak");
+    }
+    updates.status = req.body.status;
+  }
+  if (req.body.notes !== undefined) updates.notes = String(req.body.notes || "").trim();
+  if (req.body.confidence !== undefined) {
+    const confidence = req.body.confidence === null || req.body.confidence === ""
+      ? null
+      : Number(req.body.confidence);
+    if (confidence !== null && (!Number.isFinite(confidence) || confidence < 0 || confidence > 100)) {
+      throw new HttpError(400, "Confidence must be between 0 and 100");
+    }
+    updates.confidence = confidence;
+  }
+  if (req.body.lastReviewedAt !== undefined) {
+    const lastReviewedAt = req.body.lastReviewedAt ? new Date(req.body.lastReviewedAt) : null;
+    if (lastReviewedAt && Number.isNaN(lastReviewedAt.getTime())) {
+      throw new HttpError(400, "Last reviewed date is invalid");
+    }
+    updates.lastReviewedAt = lastReviewedAt;
+  }
+  if (!Object.keys(updates).length) {
+    throw new HttpError(400, "Provide at least one annotation to update");
+  }
+
+  const problem = await SyncedProblem.findOneAndUpdate(
+    { _id: req.params.id, userId: req.user._id },
+    { $set: updates },
+    { new: true, runValidators: true }
+  ).lean();
+  if (!problem) throw new HttpError(404, "Synced problem not found");
+  res.json({ problem });
 });

@@ -10,7 +10,7 @@ export const DEFAULT_EASE_FACTOR = 2.5;
 export const MIN_EASE_FACTOR = 1.3;
 const allowedResults = new Set(["solved", "hint", "failed"]);
 const difficultyWeight = { Easy: 1, Medium: 3, Hard: 2.5 };
-const statusWeight = { Solved: 0.5, Revision: 3, Weak: 5 };
+const statusWeight = { Solved: 0.5, Strong: 0.5, Revision: 3, Weak: 5 };
 
 class MaxPriorityQueue {
   constructor() { this.heap = []; }
@@ -206,13 +206,14 @@ export async function generateRevisionPlan(
   problems.forEach((problem) => {
     const topics = normalizeTopics(problem.topics);
     const weakMatches = topics.filter((topic) => weakSet.has(topic)).length;
-    const ageDays = problem.solvedDate
-      ? Math.floor((now.getTime() - new Date(problem.solvedDate)) / DAY)
+    const lastPracticeDate = problem.lastReviewedAt || problem.solvedDate;
+    const ageDays = lastPracticeDate
+      ? Math.floor((now.getTime() - new Date(lastPracticeDate)) / DAY)
       : 0;
     const priority =
       weakMatches * 4 +
       difficultyWeight[problem.difficulty] +
-      statusWeight[problem.status] +
+      (statusWeight[problem.status] ?? statusWeight.Solved) +
       Math.min(ageDays / 14, 2);
     queue.push({ problem: { ...problem, topics }, priority });
   });

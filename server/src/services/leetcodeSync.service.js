@@ -106,7 +106,7 @@ export async function fetchLeetCodeAccepted(username, fetchImpl = fetch) {
       slug: submission.titleSlug,
       difficulty: normalizeDifficulty(question?.difficulty),
       topics: mapLeetCodeTopics(question?.topicTags || []),
-      status: "Solved",
+      status: "Strong",
       solvedAt: new Date(Number(submission.timestamp) * 1000),
       submissionId: String(submission.id || ""),
       problemUrl: `https://leetcode.com/problems/${submission.titleSlug}/`,

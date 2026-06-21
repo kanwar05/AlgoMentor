@@ -6,7 +6,8 @@ import {
   manualImport,
   syncAll,
   syncCodeforces,
-  syncLeetCode
+  syncLeetCode,
+  updateSyncedProblemAnnotations
 } from "../controllers/syncController.js";
 import { protect } from "../middleware/auth.js";
 
@@ -24,4 +25,5 @@ router.post("/all", syncAll);
 router.post("/manual-import", manualImport);
 router.get("/status", getSyncStatus);
 router.get("/problems", listSyncedProblems);
+router.patch("/problems/:id/annotations", updateSyncedProblemAnnotations);
 export default router;

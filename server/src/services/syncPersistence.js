@@ -1,9 +1,9 @@
 import SyncedProblem from "../models/SyncedProblem.js";
 import { normalizeTopics } from "../utils/topicNormalizer.js";
 
-export async function upsertSyncedProblems(userId, platform, records) {
+export async function upsertSyncedProblems(userId, platform, records, model = SyncedProblem) {
   if (!records.length) {
-    const totalSynced = await SyncedProblem.countDocuments({ userId, platform });
+    const totalSynced = await model.countDocuments({ userId, platform });
     return { imported: 0, skipped: 0, totalSynced };
   }
 
@@ -14,7 +14,7 @@ export async function upsertSyncedProblems(userId, platform, records) {
   const uniqueRecords = [...new Map(normalizedRecords.map((record) => [record.platformProblemId, record])).values()];
   const inputDuplicates = records.length - uniqueRecords.length;
   const ids = uniqueRecords.map((record) => record.platformProblemId);
-  const existing = await SyncedProblem.find({
+  const existing = await model.find({
     userId,
     platform,
     platformProblemId: { $in: ids }
@@ -23,8 +23,9 @@ export async function upsertSyncedProblems(userId, platform, records) {
 
   const operations = uniqueRecords.map((record) => {
     const { platformProblemId, ...metadata } = record;
+    const { status = "Strong", notes = "", confidence = null, lastReviewedAt = null, ...platformMetadata } = metadata;
     const fieldsToUpdate = Object.fromEntries(
-      Object.entries(metadata).filter(([, value]) => value !== undefined)
+      Object.entries(platformMetadata).filter(([, value]) => value !== undefined)
     );
     return {
       updateOne: {
@@ -34,7 +35,11 @@ export async function upsertSyncedProblems(userId, platform, records) {
           $setOnInsert: {
             userId,
             platform,
-            platformProblemId
+            platformProblemId,
+            status,
+            notes,
+            confidence,
+            lastReviewedAt
           }
         },
         upsert: true
@@ -43,8 +48,8 @@ export async function upsertSyncedProblems(userId, platform, records) {
   });
 
   // One bulk write keeps imports efficient; the unique compound index prevents races.
-  await SyncedProblem.bulkWrite(operations, { ordered: false });
-  const totalSynced = await SyncedProblem.countDocuments({ userId, platform });
+  await model.bulkWrite(operations, { ordered: false });
+  const totalSynced = await model.countDocuments({ userId, platform });
   return {
     imported: uniqueRecords.filter((record) => !existingIds.has(record.platformProblemId)).length,
     skipped: uniqueRecords.filter((record) => existingIds.has(record.platformProblemId)).length + inputDuplicates,
