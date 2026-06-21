@@ -1,11 +1,21 @@
 import OpenAI from "openai";
 import Problem from "../models/Problem.js";
+import RecommendationFeedback from "../models/RecommendationFeedback.js";
 import SyncedProblem from "../models/SyncedProblem.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { generateAnalytics } from "../services/analyticsService.js";
 import { recommendProblems } from "../services/recommendationService.js";
 import { completeRevisionTask, generateRevisionPlan } from "../services/revisionService.js";
 import { generateRoadmap } from "../services/roadmapService.js";
+import { HttpError } from "../utils/httpError.js";
+
+const recommendationFeedbackTypes = new Set([
+  "too_easy",
+  "too_hard",
+  "already_solved",
+  "not_relevant",
+  "save_for_later"
+]);
 
 async function loadContext(user) {
   const [manualProblems, syncedProblems] = await Promise.all([
@@ -80,9 +90,28 @@ export const completeRevisionPlanTask = asyncHandler(async (req, res) => {
 });
 
 export const getRecommendations = asyncHandler(async (req, res) => {
-  const { problems, analytics } = await loadContext(req.user);
+  const [{ problems, analytics }, feedback] = await Promise.all([
+    loadContext(req.user),
+    RecommendationFeedback.find({ userId: req.user._id }).sort({ createdAt: -1 }).lean()
+  ]);
   res.json({
     targetCompany: req.user.targetCompany,
-    recommendations: recommendProblems(problems, analytics.weakTopics, req.user.targetCompany)
+    recommendations: recommendProblems(problems, analytics.weakTopics, req.user.targetCompany, feedback)
   });
+});
+
+export const saveRecommendationFeedback = asyncHandler(async (req, res) => {
+  const feedback = req.body.feedback;
+  if (!recommendationFeedbackTypes.has(feedback)) {
+    throw new HttpError(400, "Invalid recommendation feedback");
+  }
+  const problemId = String(req.params.problemId || "").trim();
+  if (!problemId) throw new HttpError(400, "Problem ID is required");
+
+  const record = await RecommendationFeedback.findOneAndUpdate(
+    { userId: req.user._id, problemId },
+    { $set: { feedback }, $setOnInsert: { userId: req.user._id, problemId } },
+    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+  ).lean();
+  res.json({ feedback: record });
 });
