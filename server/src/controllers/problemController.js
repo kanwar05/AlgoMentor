@@ -10,6 +10,7 @@ const sanitizeProblem = (body) => ({
   difficulty: body.difficulty,
   topics: normalizeTopics(Array.isArray(body.topics) ? body.topics : body.topic),
   status: body.status,
+  confidence: body.confidence === "" || body.confidence === undefined ? null : body.confidence,
   link: body.link,
   solvedDate: body.solvedDate,
   notes: body.notes
@@ -36,6 +37,7 @@ export const listProblems = asyncHandler(async (req, res) => {
         difficulty: 1,
         topics: 1,
         status: 1,
+        confidence: 1,
         link: 1,
         solvedDate: 1,
         notes: 1,

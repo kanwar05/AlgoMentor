@@ -17,6 +17,7 @@ const problemSchema = new mongoose.Schema(
     difficulty: { type: String, enum: ["Easy", "Medium", "Hard"], required: true },
     topics: { type: [{ type: String, trim: true }], set: normalizeTopics },
     status: { type: String, enum: ["Solved", "Revision", "Weak"], default: "Solved" },
+    confidence: { type: Number, min: 0, max: 100, default: null },
     link: { type: String, trim: true, default: "" },
     solvedDate: { type: Date, required: true, default: Date.now },
     notes: { type: String, trim: true, maxlength: 1000, default: "" }
