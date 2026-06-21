@@ -66,12 +66,14 @@ export const getRevisionPlan = asyncHandler(async (req, res) => {
 });
 
 export const completeRevisionPlanTask = asyncHandler(async (req, res) => {
-  const task = await completeRevisionTask({
+  const completed = await completeRevisionTask({
     taskId: req.params.taskId,
     userId: req.user._id,
-    result: req.body.result || "solved"
+    result: req.body.result || "solved",
+    timeTaken: req.body.timeTaken,
+    confidence: req.body.confidence
   });
-  res.json({ task });
+  res.json({ task: completed, attempt: completed.attempt });
 });
 
 export const getRecommendations = asyncHandler(async (req, res) => {
