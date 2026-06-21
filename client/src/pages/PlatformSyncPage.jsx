@@ -136,6 +136,21 @@ export default function PlatformSyncPage() {
     }
   };
 
+  const saveAnnotations = async (problemId, annotations) => {
+    if (demoMode) {
+      setProblems((items) => items.map((problem) =>
+        problem._id === problemId ? { ...problem, ...annotations } : problem
+      ));
+      notify("Synced problem annotations saved");
+      return;
+    }
+    const response = await api.patch(`/sync/problems/${problemId}/annotations`, annotations);
+    const updated = response?.data?.problem;
+    if (!updated) throw new Error("Updated problem data was not returned");
+    setProblems((items) => items.map((problem) => problem._id === problemId ? updated : problem));
+    notify("Synced problem annotations saved");
+  };
+
   const header = <PageHeader eyebrow="Automatic tracking" title="Platform Sync" description="Bring accepted submissions into the same analytics, roadmap, and recommendation loop." action={<div className="flex gap-2"><button className="btn-secondary" onClick={() => setManualOpen(true)}><Upload size={16} /> Manual import</button><button className="btn-primary" onClick={syncAll} disabled={loading.all}><RefreshCw size={16} className={loading.all ? "animate-spin" : ""} /> Sync all</button></div>} />;
   if (loading.initial) return <>{header}<Loader message="Loading platform connections…" /></>;
   if (loadError) return <>{header}<ErrorState message={loadError} onRetry={load} /></>;
@@ -160,7 +175,7 @@ export default function PlatformSyncPage() {
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_.8fr]">
-        <SyncedProblemsTable problems={problems} />
+        <SyncedProblemsTable problems={problems} onSaveAnnotations={saveAnnotations} />
         <SyncHistoryCard history={status?.history || []} />
       </div>
       <ManualImportModal open={manualOpen} onClose={() => setManualOpen(false)} onImport={manualImport} loading={loading.manual} />

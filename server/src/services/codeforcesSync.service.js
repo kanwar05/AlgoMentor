@@ -24,7 +24,7 @@ export function normalizeAcceptedCodeforcesSubmissions(submissions = []) {
       slug: slugify(problem.name),
       difficulty: difficultyFromCodeforcesRating(problem.rating),
       topics: mapCodeforcesTopics(problem.tags),
-      status: "Solved",
+      status: "Strong",
       solvedAt: new Date(submission.creationTimeSeconds * 1000),
       submissionId: String(submission.id || ""),
       problemUrl: problem.contestId

@@ -19,6 +19,9 @@ async function loadContext(user) {
     difficulty: problem.difficulty,
     topics: problem.topics,
     status: problem.status,
+    confidence: problem.confidence,
+    notes: problem.notes,
+    lastReviewedAt: problem.lastReviewedAt,
     link: problem.problemUrl,
     solvedDate: problem.solvedAt,
     synced: true
