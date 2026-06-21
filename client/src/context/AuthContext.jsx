@@ -16,8 +16,20 @@ export function AuthProvider({ children }) {
     setUser(payload.user);
   };
 
-  const login = async (credentials) => persist((await api.post("/auth/login", credentials)).data);
-  const register = async (values) => persist((await api.post("/auth/register", values)).data);
+  const authenticate = async (path, values) => {
+    try {
+      const response = await api.post(path, values);
+      const payload = response?.data;
+      if (!payload?.token || !payload?.user) throw new Error("Authentication data was not returned");
+      persist(payload);
+      return payload;
+    } catch (err) {
+      if (err.response) throw err;
+      throw new Error(err.message || "Authentication failed");
+    }
+  };
+  const login = (credentials) => authenticate("/auth/login", credentials);
+  const register = (values) => authenticate("/auth/register", values);
   const enterDemo = () => {
     localStorage.removeItem("algomentor_token");
     localStorage.setItem("algomentor_demo", "true");

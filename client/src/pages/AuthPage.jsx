@@ -16,7 +16,7 @@ export default function AuthPage({ mode }) {
   const submit = async (event) => {
     event.preventDefault(); setLoading(true); setError("");
     try { await (isLogin ? login(form) : register(form)); navigate("/app"); }
-    catch (err) { setError(err.response?.data?.message || "Could not connect to the API. Try the demo workspace."); }
+    catch (err) { setError(err.response?.data?.message || err.message || "Could not connect to the API. Try the demo workspace."); }
     finally { setLoading(false); }
   };
   const demo = () => { enterDemo(); navigate("/app"); };

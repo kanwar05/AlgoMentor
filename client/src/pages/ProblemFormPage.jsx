@@ -12,19 +12,34 @@ export default function ProblemFormPage() {
   const existing = useLocation().state?.problem;
   const { demoMode } = useAuth();
   const navigate = useNavigate();
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(existing || { title: "", platform: "LeetCode", difficulty: "Medium", topics: [], status: "Solved", confidence: "", link: "", solvedDate: new Date().toISOString().slice(0, 10), notes: "" });
+  const [form, setForm] = useState({
+    title: "",
+    platform: "LeetCode",
+    difficulty: "Medium",
+    topics: [],
+    status: "Solved",
+    confidence: "",
+    link: "",
+    solvedDate: new Date().toISOString().slice(0, 10),
+    notes: "",
+    ...(existing || {})
+  });
   const update = (event) => setForm({ ...form, [event.target.name]: event.target.value });
-  const toggleTopic = (topic) => setForm({ ...form, topics: form.topics.includes(topic) ? form.topics.filter((item) => item !== topic) : [...form.topics, topic] });
+  const toggleTopic = (topic) => {
+    const selectedTopics = form?.topics || [];
+    setForm({ ...form, topics: selectedTopics.includes(topic) ? selectedTopics.filter((item) => item !== topic) : [...selectedTopics, topic] });
+  };
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.topics.length) { setError("Select at least one topic."); return; }
+    if (!form?.topics?.length) { setError("Select at least one topic."); return; }
+    setError(null);
     setSaving(true);
     try {
       if (!demoMode) await (id ? api.put(`/problems/${id}`, form) : api.post("/problems", form));
       navigate("/app/problems");
-    } catch (err) { setError(err.response?.data?.message || "Could not save the problem."); }
+    } catch (err) { setError(err.response?.data?.message || err.message || "Could not save the problem."); }
     finally { setSaving(false); }
   };
   return (
@@ -35,7 +50,7 @@ export default function ProblemFormPage() {
           {error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-600">{error}</p>}
           <div><label className="label">Problem title</label><input name="title" className="input" value={form.title} onChange={update} placeholder="e.g. Longest Substring Without Repeating Characters" required /></div>
           <div className="grid gap-4 sm:grid-cols-2"><div><label className="label">Platform</label><select name="platform" className="input" value={form.platform} onChange={update}>{["LeetCode", "GeeksforGeeks", "Codeforces", "HackerRank", "InterviewBit", "Other"].map((p) => <option key={p}>{p}</option>)}</select></div><div><label className="label">Difficulty</label><select name="difficulty" className="input" value={form.difficulty} onChange={update}><option>Easy</option><option>Medium</option><option>Hard</option></select></div></div>
-          <div><label className="label">Topics</label><div className="flex flex-wrap gap-2">{topics.map((topic) => <button type="button" key={topic} onClick={() => toggleTopic(topic)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${form.topics.includes(topic) ? "border-violet-500 bg-violet-500 text-white" : "bg-white text-slate-500 dark:bg-white/5"}`}>{form.topics.includes(topic) && <Check size={12} className="mr-1 inline" />}{topic}</button>)}</div></div>
+          <div><label className="label">Topics</label><div className="flex flex-wrap gap-2">{topics.map((topic) => <button type="button" key={topic} onClick={() => toggleTopic(topic)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${(form?.topics || []).includes(topic) ? "border-violet-500 bg-violet-500 text-white" : "bg-white text-slate-500 dark:bg-white/5"}`}>{(form?.topics || []).includes(topic) && <Check size={12} className="mr-1 inline" />}{topic}</button>)}</div></div>
           <div><label className="label">Problem link</label><input type="url" name="link" className="input" value={form.link} onChange={update} placeholder="https://leetcode.com/problems/…" /></div>
           <div><label className="label">Notes (optional)</label><textarea name="notes" className="input min-h-28 resize-y" value={form.notes} onChange={update} placeholder="Key insight, complexity, or mistake to revisit…" /></div>
         </div>
