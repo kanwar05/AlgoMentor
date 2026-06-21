@@ -7,6 +7,7 @@ import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import problemRoutes from "./routes/problemRoutes.js";
 import insightRoutes from "./routes/insightRoutes.js";
+import mockInterviewRoutes from "./routes/mockInterviewRoutes.js";
 import syncRoutes from "./routes/syncRoutes.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 
@@ -23,6 +24,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/problems", problemRoutes);
 app.use("/api/sync", syncRoutes);
+app.use("/api/mock-interviews", mockInterviewRoutes);
 app.use("/api", insightRoutes);
 app.use(notFound);
 app.use(errorHandler);
