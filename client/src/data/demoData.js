@@ -95,7 +95,7 @@ export const demoRoadmap = {
 };
 
 export const demoRevisionPlan = {
-  strategy: "Weak-topic weight + status urgency + medium-problem preference + spaced review age",
+  strategy: "Adaptive spaced repetition + weak-topic urgency + difficulty balance",
   days: ["Dynamic Programming", "Graph", "Sliding Window", "Trees", "Dynamic Programming", "Graph", "Mixed Mock"].map((theme, index) => ({
     day: index + 1, date: new Date(today.getTime() + index * 86_400_000).toISOString().slice(0, 10), theme,
     tasks: [
