@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || "/api" });
+const defaultApiUrl = import.meta.env.DEV ? "http://localhost:5002/api" : "/api";
+const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || defaultApiUrl });
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("algomentor_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
