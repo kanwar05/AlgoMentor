@@ -112,4 +112,8 @@ export const demoRecommendations = [
   ["Network Delay Time", "Medium", ["Graph", "Dijkstra"], "Builds your next graph dependency", ["Google"]],
   ["Longest Increasing Subsequence", "Medium", ["Dynamic Programming", "Binary Search"], "High-value Google pattern", ["Google", "Microsoft"]],
   ["Word Break", "Medium", ["Dynamic Programming", "String"], "Balances your DP pattern coverage", ["Google", "Amazon"]]
-].map(([title, difficulty, topics, reason, companies], i) => ({ title, difficulty, topics, reason, companies, platform: "LeetCode", link: "https://leetcode.com/problemset/", score: 12 - i }));
+].map(([title, difficulty, topics, reason, companies], i) => ({
+  problemId: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+  title, difficulty, topics, reason, companies, platform: "LeetCode",
+  link: "https://leetcode.com/problemset/", score: 12 - i, savedForLater: false
+}));
