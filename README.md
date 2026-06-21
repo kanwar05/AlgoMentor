@@ -1,61 +1,133 @@
-# AlgoMentor — AI-Powered DSA Roadmap & Analytics Platform
+# AlgoMentor — Adaptive DSA Interview Preparation
 
-AlgoMentor is a full-stack interview-preparation workspace that turns a student's solved-problem history into actionable feedback. Instead of serving a static question sheet, it detects weak concepts, builds a dependency-aware learning path, schedules revision with priority-queue logic, and recommends unsolved questions aligned with a target company.
+AlgoMentor is a full-stack learning system that turns solved-problem history into a personalized interview-preparation loop. It combines manual tracking, LeetCode and Codeforces sync, topic analytics, adaptive spaced repetition, recommendation feedback, and timed mock interviews.
 
-The app includes a one-click interactive demo, so portfolio reviewers can explore it without a database or account.
+The application also includes an interactive demo mode, so it can be explored without creating an account or connecting MongoDB.
 
-## Why this project exists
+## What AlgoMentor answers
 
-DSA students often track volume but lack a feedback loop. Raw counts do not answer:
-
-- Which topic should I strengthen next?
-- Am I practicing at the right difficulty?
-- What should I revise this week?
-- Is my preparation broad and consistent enough for interviews?
-
-AlgoMentor answers those questions using transparent scoring and actual DSA data structures.
+- Which topics are genuinely strong or weak?
+- What should I revise today, and when should I see it again?
+- Which problem should I solve next?
+- Are the recommendations too easy, too hard, or irrelevant?
+- How do I perform under interview time pressure?
+- What should I practice after a failed mock interview?
 
 ## Features
 
-- JWT signup/login with bcrypt password hashing and user-scoped protected routes
-- Full problem tracker with search, filters, CRUD, topics, notes, links, and learning status
-- Dashboard with total solved, difficulty distribution, topic coverage, streaks, activity heatmap, and weekly goals
-- Automatic weak-topic detection based on practice volume and `Revision` / `Weak` ratios
+### Practice tracking and platform sync
+
+- JWT authentication with bcrypt password hashing and user-scoped data access
+- Manual solved-problem CRUD with topics, status, confidence, notes, links, and solved date
+- Direct edit URLs that survive refreshes and new-tab navigation
+- LeetCode recent-submission sync and complete-history manual import
+- Complete Codeforces accepted-submission sync
+- Idempotent imports protected by a compound MongoDB unique index
+- Synced-problem annotations:
+  - `Strong`, `Revision`, or `Weak`
+  - confidence
+  - notes
+  - last reviewed date
+- Re-syncing updates platform metadata without overwriting user annotations
+
+### Analytics and roadmap
+
+- Dashboard totals, weekly goals, platform counts, streaks, and activity heatmaps
+- Difficulty balance and an explainable 0–100 interview-readiness score
+- Normalized topic analytics that merge aliases such as `Array`, `Arrays`, and `array`
+- Interactive Topic Mastery Bubble Map:
+  - bubble size represents solved volume
+  - color represents topic strength
+  - hover reveals difficulty and status breakdowns
+  - selecting a bubble opens the filtered problem list
+- Weak-topic detection from solved, revision, weak, and confidence signals
 - Dependency-aware roadmap generated from a directed DSA topic graph
-- Seven-day revision plan generated with a binary max-heap
-- Company-aware recommendations for Google, Amazon, Microsoft, Meta, or a general track
-- Explainable interview-readiness score with four visible sub-scores
 - Optional OpenAI-generated roadmap coaching
-- LeetCode and Codeforces account connections with accepted-submission sync
-- Idempotent platform imports backed by a compound MongoDB unique index
-- Manual JSON import fallback when LeetCode blocks or rate-limits GraphQL requests
-- Platform-specific solved counts and sync-powered analytics, heatmaps, weak topics, readiness, roadmaps, and recommendations
-- Responsive UI, dark mode, production error handling, rate limiting, and security headers
-- Interactive demo mode for portfolio reviewers
+
+### Adaptive Revision Engine
+
+Every revision completion creates a persistent `ReviewAttempt` containing:
+
+```text
+userId, problemId, result, timeTaken, confidence,
+reviewedAt, nextReviewAt, interval, easeFactor
+```
+
+The scheduler adapts after each review:
+
+```text
+Solved     → interval × easeFactor, easeFactor + 0.1
+Used hint  → retain interval,       easeFactor - 0.1
+Failed     → interval = 1 day,      easeFactor - 0.2
+```
+
+- Ease factor is safely floored at `1.3`
+- Reviews appear on their actual due day
+- Reviews beyond the next seven days stay out of the current sprint
+- The revision UI captures result, confidence, and optional time spent
+
+### Adaptive recommendations
+
+- Recommendations use weak-topic overlap, company alignment, difficulty balance, solved history, and user feedback
+- Available feedback:
+  - Too easy
+  - Too hard
+  - Already solved
+  - Not relevant
+  - Save for later
+- Dismissed recommendations do not repeat
+- Too-easy feedback shifts future recommendations harder
+- Too-hard feedback favors easier prerequisite practice
+- Not-relevant feedback reduces related-topic weighting
+- Saved problems remain visible and are ranked first
+
+### Mock Interview Mode
+
+1. Select company, difficulty, and duration
+2. Generate two or three suitable unsolved problems
+3. Start a persistent countdown timer
+4. Record each result as solved, used hint, or failed
+5. Receive a score, weak-topic analysis, and next-practice plan
+
+Active sessions survive browser refreshes. Scoring is transparent:
+
+```text
+Solved: 100%   Used hint: 60%   Failed/skipped: 0%
+```
+
+### Reliability and UX
+
+- Shared loading, error, empty, and retry states
+- Null-safe and partial-response-safe page rendering
+- Race-safe API refetching
+- Responsive layout and dark mode
+- Helmet, CORS, rate limiting, and centralized API error handling
 
 ## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React, Vite, Tailwind CSS, React Router |
-| Charts | Recharts |
-| Backend | Node.js, Express |
+| Frontend | React 19, Vite, Tailwind CSS, React Router |
+| Charts | Recharts, custom responsive SVG |
+| Backend | Node.js, Express 5 |
 | Database | MongoDB, Mongoose |
 | Authentication | JWT, bcrypt |
+| Testing | Node test runner, Vitest, Testing Library, jsdom |
 | Optional AI | OpenAI Responses API |
-| Security | Helmet, CORS, rate limiting |
+| Security | Helmet, CORS, Express rate limiting |
 
-## DSA concepts implemented
+## Algorithms and data structures
 
-- **Hash Maps:** O(n) topic, status, difficulty, and daily-activity counting in `analyticsService.js`
-- **Deduplication:** in-memory sets plus a `userId + platform + platformProblemId` unique index prevent repeated accepted submissions
-- **Directed Graph:** adjacency-list representation of DSA prerequisites in `topicGraph.js`
-- **BFS:** backward prerequisite discovery for weak topics
-- **DFS:** forward traversal through dependent concepts to form a focused learning sequence
-- **Priority Queue / Binary Max-Heap:** O(log n) revision scheduling, prioritizing weak status, medium difficulty, topic overlap, and spaced-review age
-- **Dynamic scoring:** normalized weighted interview-readiness score
+- **Hash maps and sets:** O(n) analytics aggregation, normalization, deduplication, and feedback lookup
+- **Directed graph:** adjacency-list representation of DSA prerequisites
+- **BFS:** backward prerequisite discovery
+- **DFS:** forward dependency traversal for roadmap generation
+- **Binary max-heap:** O(log n) priority scheduling for revision candidates
+- **Spaced repetition:** adaptive interval and ease-factor updates
+- **Weighted ranking:** recommendations combine topic, company, difficulty, relevance, and saved-item signals
+- **Deterministic SVG packing:** responsive topic bubble placement without restarting a force simulation
 
-The core algorithms are deliberately isolated in `server/src/services`, making them testable and easy to explain in an interview.
+Core product logic lives in `server/src/services`, keeping algorithms independently testable.
 
 ## Project structure
 
@@ -64,86 +136,68 @@ AlgoMentor/
 ├── client/
 │   └── src/
 │       ├── api/          # Axios client and auth interception
-│       ├── components/   # Reusable UI primitives
-│       ├── context/      # Authentication and demo-mode state
-│       ├── data/         # Demo portfolio dataset
-│       ├── hooks/        # Remote/demo data adapter
+│       ├── components/   # Shared states, charts, sync UI, and primitives
+│       ├── context/      # Authentication and demo mode
+│       ├── data/         # Demo dataset
+│       ├── hooks/        # Remote-data loading and retry behavior
 │       ├── layouts/      # Responsive application shell
-│       └── pages/        # All product pages
+│       └── pages/        # Product flows and page tests
 ├── server/
+│   ├── test/             # Service, model, auth, ownership, and API tests
 │   └── src/
 │       ├── controllers/
 │       ├── data/         # Topic graph and recommendation bank
 │       ├── middleware/
 │       ├── models/
 │       ├── routes/
-│       ├── services/     # Analytics and DSA algorithms
+│       ├── services/
 │       └── utils/
+├── screenshots/
 └── README.md
 ```
 
-## API routes
-
-All routes except register, login, and health require `Authorization: Bearer <token>`.
-
-| Method | Route | Purpose |
-|---|---|---|
-| POST | `/api/auth/register` | Create an account |
-| POST | `/api/auth/login` | Authenticate and return a JWT |
-| GET | `/api/auth/me` | Get profile |
-| PUT | `/api/auth/me` | Update goals and preferences |
-| PUT | `/api/profile/platforms` | Save LeetCode and Codeforces handles |
-| GET | `/api/problems` | List/search/filter problems |
-| POST | `/api/problems` | Add a solved problem |
-| PUT | `/api/problems/:id` | Update a problem |
-| DELETE | `/api/problems/:id` | Delete a problem |
-| GET | `/api/analytics` | Dashboard analytics and readiness |
-| GET | `/api/roadmap` | Personalized graph roadmap |
-| GET | `/api/roadmap?explain=true` | Include optional AI coaching |
-| GET | `/api/revision-plan` | Seven-day priority plan |
-| GET | `/api/recommendations` | Ranked unsolved questions |
-| POST | `/api/sync/leetcode` | Import recent accepted LeetCode submissions |
-| POST | `/api/sync/codeforces` | Import unique accepted Codeforces submissions |
-| POST | `/api/sync/all` | Sync every connected platform |
-| POST | `/api/sync/manual-import` | Import a JSON array of solved problems |
-| GET | `/api/sync/status` | Connected handles, counts, timestamps, and history |
-| GET | `/api/sync/problems` | Paginated synced-problem list |
-| GET | `/api/health` | Service health check |
-
 ## Run locally
 
-Requirements: Node.js 20+ and MongoDB 7+ (local or Atlas).
+Requirements:
+
+- Node.js 20+
+- MongoDB 7+ locally or through MongoDB Atlas
+
+Install and start both applications:
 
 ```bash
 cp .env.example server/.env
+cp .env.example client/.env
 npm run install:all
 npm run dev
 ```
 
-Open `http://localhost:5173`. The API runs at `http://localhost:5002`.
+Open:
 
-To add a portfolio-ready demo account:
+- Client: `http://localhost:5173`
+- API: `http://localhost:5002`
+- Health check: `http://localhost:5002/api/health`
+
+### Demo data
+
+Seed a database-backed demo account:
 
 ```bash
 npm run seed --prefix server
 ```
 
-Credentials: `demo@algomentor.dev` / `DemoPass123!`
+Credentials:
 
-You can also click **Explore live demo** on the landing page without running MongoDB.
-
-### Optional AI explanation
-
-Add these values to `server/.env`:
-
-```env
-OPENAI_API_KEY=your-key
-OPENAI_MODEL=gpt-4o-mini
+```text
+demo@algomentor.dev
+DemoPass123!
 ```
 
-The product works fully without an AI key; AI is an enhancement, not a dependency.
+Alternatively, select the demo workspace from the landing page. Demo mode does not require MongoDB.
 
-### Environment variables
+## Environment variables
+
+The provided `.env.example` contains:
 
 ```env
 MONGODB_URI=mongodb://127.0.0.1:27017/algomentor
@@ -153,27 +207,90 @@ PORT=5002
 CLIENT_URL=http://localhost:5173
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
+VITE_API_URL=http://localhost:5002/api
 ```
 
-Platform sync uses public LeetCode and Codeforces endpoints and requires no platform API keys.
+`OPENAI_API_KEY` is optional. The core product works without AI.
 
-## Platform Sync
+## API overview
 
-Open **Platform Sync** in the authenticated sidebar, save one or both handles, and run an individual or combined sync.
+All routes except registration, login, and health require:
 
-### How Codeforces sync works
+```http
+Authorization: Bearer <token>
+```
 
-AlgoMentor calls `user.status`, keeps submissions whose verdict is `OK`, and deduplicates them by `contestId + problem index`. It imports the problem name, tags, rating, language, accepted timestamp, submission ID, and canonical problem URL. Codeforces ratings are normalized into Easy, Medium, and Hard bands, while known tags are mapped to AlgoMentor topics.
+### Authentication and profile
 
-### LeetCode limitations
+| Method | Route | Purpose |
+|---|---|---|
+| POST | `/api/auth/register` | Create an account |
+| POST | `/api/auth/login` | Authenticate and return a JWT |
+| GET | `/api/auth/me` | Get the current profile |
+| PUT | `/api/auth/me` | Update goals and preferences |
+| PUT | `/api/profile/platforms` | Save platform handles |
 
-LeetCode does not provide a stable public API for complete submission history by username. Its public GraphQL query currently hard-caps accepted submissions at the latest 20 records; requesting larger limits still returns 20. The profile API provides the full solved count but not the identities of older solved problems.
+### Problems and analytics
 
-For a complete history, open **Manual import** and copy the supplied exporter into the browser console on the logged-in LeetCode problemset page. The script paginates through the problem list, selects every accepted problem, and downloads one JSON file that can be uploaded to AlgoMentor. It executes on LeetCode's own origin; session cookies are not written to the export or sent to AlgoMentor. Imports support up to 5,000 problems and remain idempotent.
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/api/problems` | Search and filter manual and synced problems |
+| POST | `/api/problems` | Add a manual solved problem |
+| GET | `/api/problems/:id` | Fetch an owned manual problem for direct editing |
+| PUT | `/api/problems/:id` | Update an owned manual problem |
+| DELETE | `/api/problems/:id` | Delete an owned manual problem |
+| GET | `/api/analytics` | Analytics, readiness, and topic mastery |
+| GET | `/api/roadmap` | Dependency-aware roadmap |
+| GET | `/api/roadmap?explain=true` | Roadmap with optional AI coaching |
 
-The exporter also paginates authenticated submission history to attach the earliest accepted timestamp to each problem. Re-importing the generated file updates existing records, replacing older sync-time dates. If LeetCode does not expose a timestamp for a problem, AlgoMentor displays `Date unavailable` rather than using the import date.
+### Revision and recommendations
 
-Example manual import:
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/api/revision-plan` | Generate the adaptive seven-day revision plan |
+| PATCH | `/api/revision-plan/:taskId/complete` | Record a review result and schedule the next review |
+| GET | `/api/recommendations` | Get adaptive ranked recommendations |
+| PUT | `/api/recommendations/:problemId/feedback` | Save recommendation feedback |
+
+### Platform sync
+
+| Method | Route | Purpose |
+|---|---|---|
+| POST | `/api/sync/leetcode` | Sync recent LeetCode submissions |
+| POST | `/api/sync/codeforces` | Sync accepted Codeforces submissions |
+| POST | `/api/sync/all` | Sync all connected platforms |
+| POST | `/api/sync/manual-import` | Import solved-problem JSON |
+| GET | `/api/sync/status` | Get handles, coverage, counts, and history |
+| GET | `/api/sync/problems` | List synced problems |
+| PATCH | `/api/sync/problems/:id/annotations` | Update synced-problem learning annotations |
+
+### Mock interviews
+
+| Method | Route | Purpose |
+|---|---|---|
+| POST | `/api/mock-interviews` | Generate and persist an interview |
+| GET | `/api/mock-interviews/:id` | Resume an owned interview |
+| PATCH | `/api/mock-interviews/:id/complete` | Score and complete an interview |
+| GET | `/api/health` | Service health check |
+
+## Platform sync notes
+
+### Codeforces
+
+AlgoMentor uses `user.status`, keeps submissions with verdict `OK`, and deduplicates by `contestId + problem index`. Ratings are normalized into Easy, Medium, and Hard bands, and known tags are mapped to canonical AlgoMentor topics.
+
+### LeetCode
+
+LeetCode's public GraphQL profile endpoint exposes the latest accepted submissions and the total solved count, but not every older solved problem identity. For complete history:
+
+1. Open **Platform Sync → Manual import**
+2. Copy the provided exporter
+3. Run it on the authenticated LeetCode problemset page
+4. Upload the downloaded JSON file
+
+The exporter runs on LeetCode's origin. Cookies and credentials are not included in the export or sent to AlgoMentor. Imports support up to 5,000 records and remain idempotent.
+
+Example:
 
 ```json
 [
@@ -189,12 +306,30 @@ Example manual import:
 
 ## Testing
 
+Run both test suites and the production build:
+
 ```bash
-npm test
+npm test --prefix server
+npm test --prefix client
 npm run build
 ```
 
-The server test suite covers Codeforces accepted-submission filtering, duplicate prevention, platform topic mapping, readiness changes after sync, and manual-import validation.
+Current coverage includes:
+
+- topic normalization, analytics, mastery scoring, and bubble interactions
+- API loading, failure, null-response, retry, and partial-response states
+- direct edit URL loading, authentication, and ownership
+- adaptive revision intervals, persistence, due dates, and UI feedback
+- synced-problem annotation validation and resync preservation
+- recommendation feedback persistence and adaptive ranking
+- mock interview generation, scoring, weak topics, ownership, timer flow, and refresh recovery
+
+At the time of this update:
+
+```text
+Server: 58 passing tests
+Client: 26 passing tests
+```
 
 ## Readiness formula
 
@@ -206,43 +341,34 @@ score =
   totalSolvedScore × 0.20
 ```
 
-Every component is normalized to 0–100. Weak-topic count reduces the coverage component, preventing shallow practice volume from inflating readiness.
+Every component is normalized to 0–100. Weak and revision-heavy topic signals reduce coverage credit, preventing raw volume from inflating readiness.
 
 ## Screenshots
 
-Add deployed captures under `docs/screenshots/`:
+Screenshots are stored in [`screenshots/`](screenshots/).
 
-1. Landing page
-2. Analytics dashboard
-<img src="./screenshots/Screenshot 2026-06-19 at 11.37.27 AM.png" />
-<img src="./screenshots/Screenshot 2026-06-19 at 11.37.40 AM.png" />
-<img src="./screenshots/Screenshot 2026-06-19 at 11.37.53 AM.png" />
-<img src="./screenshots/Screenshot 2026-06-19 at 11.38.03 AM.png" />
-<img src="./screenshots/Screenshot 2026-06-19 at 11.38.14 AM.png" />
-<img src="./screenshots/Screenshot 2026-06-19 at 11.38.22 AM.png" />
-<img src="./screenshots/Screenshot 2026-06-19 at 11.38.46 AM.png" />
-<img src="./screenshots/Screenshot 2026-06-19 at 11.39.06 AM.png" />
-<img src="./screenshots/" />
-<img src="./screenshots" />
-3. Dependency roadmap
-4. Seven-day revision plan
-5. Recommendations
-6. Platform Sync connections and history
-7. Mobile and dark-mode views
+![AlgoMentor dashboard](<screenshots/Screenshot 2026-06-19 at 11.37.27 AM.png>)
+
+![AlgoMentor analytics](<screenshots/Screenshot 2026-06-19 at 11.37.40 AM.png>)
+
+![AlgoMentor roadmap](<screenshots/Screenshot 2026-06-19 at 11.38.14 AM.png>)
+
+![AlgoMentor revision plan](<screenshots/Screenshot 2026-06-19 at 11.38.22 AM.png>)
 
 ## Future improvements
 
-- Trie-based instant title/topic suggestions
+- Mock-interview history and performance trends
+- Scheduled email or push revision reminders
+- Larger curated problem catalog
 - Redis caching for aggregate analytics
-- Scheduled email revision reminders
-- Cohort benchmarking and mock-interview history
-- CI pipeline and expanded API integration tests
-- Drag-and-drop roadmap customization
+- CI/CD pipeline and deployment health monitoring
+- Cohort benchmarking
 - LLM-generated hints grounded in the user's own notes
 
 ## Resume bullet points
 
-- Engineered a production-style MERN analytics platform that transforms DSA practice history into topic coverage, streaks, heatmaps, and an explainable interview-readiness score using hash-map aggregations and weighted scoring.
-- Designed a dependency-aware recommendation engine using directed graphs, BFS/DFS traversal, and a binary max-heap to generate personalized learning roadmaps and priority-ranked seven-day revision plans.
-- Built secure JWT authentication, user-scoped CRUD APIs, company-targeted problem recommendations, optional AI coaching, and a responsive React/Tailwind dashboard with Recharts and dark mode.
-- Implemented idempotent LeetCode and Codeforces synchronization with GraphQL/REST adapters, compound-index deduplication, rate-limit handling, manual import fallback, and unified analytics across manual and synced practice data.
+- Engineered a full-stack adaptive DSA learning platform that unifies manual practice, LeetCode/Codeforces sync, topic mastery analytics, readiness scoring, and dependency-aware roadmaps.
+- Built a persistent spaced-repetition engine with review attempts, adaptive intervals, ease factors, due-date scheduling, confidence, and time-spent signals.
+- Designed a feedback-aware recommendation engine that adapts difficulty and topic weighting while suppressing dismissed or already-solved suggestions.
+- Implemented persistent timed mock interviews with company/difficulty targeting, transparent scoring, weak-topic extraction, refresh recovery, and generated next-practice plans.
+- Secured user-scoped APIs with JWT authentication, ownership-safe queries, validation, centralized error handling, idempotent imports, and comprehensive frontend/backend tests.
