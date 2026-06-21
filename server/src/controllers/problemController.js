@@ -1,5 +1,6 @@
 import Problem from "../models/Problem.js";
 import SyncedProblem from "../models/SyncedProblem.js";
+import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { HttpError } from "../utils/httpError.js";
 import { normalizeTopic, normalizeTopics } from "../utils/topicNormalizer.js";
@@ -100,6 +101,20 @@ export const createProblem = asyncHandler(async (req, res) => {
   }
   const problem = await Problem.create({ ...payload, user: req.user._id });
   res.status(201).json({ problem });
+});
+
+export const getProblem = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    throw new HttpError(404, "Problem not found");
+  }
+
+  const problem = await Problem.findOne({
+    _id: req.params.id,
+    user: req.user._id
+  }).lean();
+
+  if (!problem) throw new HttpError(404, "Problem not found");
+  res.json(problem);
 });
 
 export const updateProblem = asyncHandler(async (req, res) => {
