@@ -5,6 +5,90 @@ import { normalizeTopics } from "../utils/topicNormalizer.js";
 const DAY = 86_400_000;
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 const dateKey = (date) => new Date(date).toISOString().slice(0, 10);
+const statusKey = (status) => String(status || "Solved").toLowerCase();
+
+export function calculateTopicStrength({
+  solved = 0,
+  revision = 0,
+  weak = 0,
+  averageConfidence = null
+} = {}) {
+  const total = Math.max(Number(solved) || 0, 0);
+  if (!total) return 0;
+
+  const revisionCount = Math.max(Number(revision) || 0, 0);
+  const weakCount = Math.max(Number(weak) || 0, 0);
+  const strongCount = Math.max(total - revisionCount - weakCount, 0);
+  const outcomeScore = ((strongCount * 100) + (revisionCount * 55) + (weakCount * 20)) / total;
+  const hasConfidence = averageConfidence !== null && averageConfidence !== undefined && averageConfidence !== "";
+  const confidence = Number(averageConfidence);
+
+  return clamp(Math.round(
+    hasConfidence && Number.isFinite(confidence)
+      ? (outcomeScore * 0.8) + (clamp(confidence) * 0.2)
+      : outcomeScore
+  ));
+}
+
+export function buildTopicMasteryStats(problems) {
+  const map = new Map();
+
+  for (const problem of problems) {
+    for (const name of normalizeTopics(problem.topics)) {
+      if (!map.has(name)) {
+        map.set(name, {
+          name,
+          solved: 0,
+          easy: 0,
+          medium: 0,
+          hard: 0,
+          weak: 0,
+          revision: 0,
+          strong: 0,
+          confidenceTotal: 0,
+          confidenceCount: 0
+        });
+      }
+
+      const entry = map.get(name);
+      entry.solved += 1;
+      const difficulty = String(problem.difficulty || "").toLowerCase();
+      if (difficulty in entry) entry[difficulty] += 1;
+
+      const status = statusKey(problem.status);
+      if (status === "weak") entry.weak += 1;
+      else if (status === "revision") entry.revision += 1;
+      else entry.strong += 1;
+
+      const hasConfidence = problem.confidence !== null &&
+        problem.confidence !== undefined &&
+        problem.confidence !== "";
+      const confidence = Number(problem.confidence);
+      if (hasConfidence && Number.isFinite(confidence)) {
+        entry.confidenceTotal += clamp(confidence);
+        entry.confidenceCount += 1;
+      }
+    }
+  }
+
+  return [...map.values()]
+    .map(({ confidenceTotal, confidenceCount, ...topic }) => {
+      const averageConfidence = confidenceCount
+        ? Math.round(confidenceTotal / confidenceCount)
+        : null;
+      return {
+        ...topic,
+        averageConfidence,
+        strengthScore: calculateTopicStrength({
+          solved: topic.solved,
+          revision: topic.revision,
+          weak: topic.weak,
+          averageConfidence
+        })
+      };
+    })
+    .sort((a, b) => b.solved - a.solved || a.name.localeCompare(b.name));
+}
 
 // Hash Maps provide O(n) counting by difficulty, topic, status, and day.
 export function buildTopicStats(problems) {
@@ -14,7 +98,9 @@ export function buildTopicStats(problems) {
       if (!map.has(topic)) map.set(topic, { topic, total: 0, solved: 0, revision: 0, weak: 0 });
       const entry = map.get(topic);
       entry.total += 1;
-      entry[problem.status.toLowerCase()] += 1;
+      const key = statusKey(problem.status);
+      if (key in entry) entry[key] += 1;
+      else entry.solved += 1;
     }
   }
   return [...map.values()].map((stat) => {
@@ -129,6 +215,7 @@ export function calculateReadiness(problems, topicStats, _weakTopics, activity) 
 
 export function generateAnalytics(problems, weeklyGoal = 10) {
   const topicStats = buildTopicStats(problems);
+  const topics = buildTopicMasteryStats(problems);
   const weakTopics = detectWeakTopics(topicStats);
   const strongTopics = topicsByStatus(topicStats, "strong");
   const practicingTopics = topicsByStatus(topicStats, "practicing");
@@ -153,6 +240,7 @@ export function generateAnalytics(problems, weeklyGoal = 10) {
   }, {});
 
   return {
+    topics,
     summary: {
       totalSolved: problems.length,
       platformCounts,

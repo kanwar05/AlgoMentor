@@ -4,7 +4,13 @@ import { validateManualImport } from "../src/controllers/syncController.js";
 import Problem from "../src/models/Problem.js";
 import { normalizeAcceptedCodeforcesSubmissions } from "../src/services/codeforcesSync.service.js";
 import { fetchLeetCodeAccepted } from "../src/services/leetcodeSync.service.js";
-import { buildTopicStats, calculateReadiness, generateAnalytics } from "../src/services/analyticsService.js";
+import {
+  buildTopicMasteryStats,
+  buildTopicStats,
+  calculateReadiness,
+  calculateTopicStrength,
+  generateAnalytics
+} from "../src/services/analyticsService.js";
 import { mapCodeforcesTopics, mapLeetCodeTopics } from "../src/services/platformTopicMapping.js";
 import { recommendProblems } from "../src/services/recommendationService.js";
 import { generateRoadmap } from "../src/services/roadmapService.js";
@@ -90,6 +96,60 @@ test("analytics groups equivalent topics under one canonical name", () => {
   assert.equal(stats.some((item) => item.topic === "Arrays"), false);
   assert.equal(stats.find((item) => item.topic === "Array").status, "practicing");
   assert.equal(stats.find((item) => item.topic === "Array").totalSolved, 2);
+});
+
+test("topic mastery analytics count normalized topics and difficulty once per problem", () => {
+  const topics = buildTopicMasteryStats([
+    { topics: ["Array", "Arrays"], difficulty: "Easy", status: "Solved", confidence: 90 },
+    { topics: [" array "], difficulty: "Medium", status: "Revision", confidence: 70 },
+    { topics: ["hash-table"], difficulty: "Hard", status: "Weak", confidence: null },
+    { topics: ["Hash Map"], difficulty: "Medium", status: "Solved", confidence: null }
+  ]);
+  const array = topics.find((item) => item.name === "Array");
+  const hashMap = topics.find((item) => item.name === "Hash Map");
+
+  assert.deepEqual(array, {
+    name: "Array",
+    solved: 2,
+    easy: 1,
+    medium: 1,
+    hard: 0,
+    weak: 0,
+    revision: 1,
+    strong: 1,
+    averageConfidence: 80,
+    strengthScore: 78
+  });
+  assert.equal(hashMap.solved, 2);
+  assert.equal(hashMap.hard, 1);
+  assert.equal(hashMap.medium, 1);
+  assert.equal(hashMap.weak, 1);
+  assert.equal(hashMap.strong, 1);
+  assert.equal(hashMap.averageConfidence, null);
+});
+
+test("topic strength score is clamped, status weighted, and confidence aware", () => {
+  assert.equal(calculateTopicStrength({ solved: 0 }), 0);
+  assert.equal(calculateTopicStrength({ solved: 10, revision: 0, weak: 0 }), 100);
+  assert.equal(calculateTopicStrength({ solved: 10, revision: 2, weak: 3 }), 67);
+  assert.equal(calculateTopicStrength({ solved: 2, revision: 1, averageConfidence: 80 }), 78);
+  assert.equal(calculateTopicStrength({ solved: 1, averageConfidence: 500 }), 100);
+});
+
+test("analytics exposes topic mastery data without changing existing topic stats", () => {
+  const analytics = generateAnalytics([{
+    title: "Two Sum",
+    platform: "LeetCode",
+    difficulty: "Easy",
+    topics: ["Arrays", "hash-table"],
+    status: "Solved",
+    solvedDate: new Date(),
+    confidence: 85
+  }]);
+
+  assert.deepEqual(analytics.topics.map((item) => item.name), ["Array", "Hash Map"]);
+  assert.equal(analytics.topics[0].solved, 1);
+  assert.equal(analytics.topicStats.find((item) => item.topic === "Array").total, 1);
 });
 
 test("topic classifier distinguishes untouched, practicing, weak, and strong", () => {

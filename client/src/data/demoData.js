@@ -56,6 +56,15 @@ export const demoAnalytics = {
     topicDistribution: { strong: 3, weak: 2, practicing: 2, untouched: 4 }
   },
   readiness: { score: 72, breakdown: { topicCoverage: 76, difficultyBalance: 84, consistency: 69, totalSolvedScore: 64 } },
+  topics: [
+    { name: "Array", solved: 16, easy: 5, medium: 9, hard: 2, weak: 1, revision: 2, strong: 13, averageConfidence: 84, strengthScore: 88 },
+    { name: "Hash Map", solved: 11, easy: 4, medium: 6, hard: 1, weak: 0, revision: 2, strong: 9, averageConfidence: 80, strengthScore: 90 },
+    { name: "Tree", solved: 9, easy: 3, medium: 5, hard: 1, weak: 1, revision: 1, strong: 7, averageConfidence: 76, strengthScore: 82 },
+    { name: "Dynamic Programming", solved: 8, easy: 1, medium: 5, hard: 2, weak: 4, revision: 2, strong: 2, averageConfidence: 42, strengthScore: 47 },
+    { name: "Graph", solved: 7, easy: 1, medium: 5, hard: 1, weak: 3, revision: 1, strong: 3, averageConfidence: 48, strengthScore: 57 },
+    { name: "Sliding Window", solved: 4, easy: 1, medium: 3, hard: 0, weak: 0, revision: 1, strong: 3, averageConfidence: null, strengthScore: 89 },
+    { name: "Backtracking", solved: 3, easy: 0, medium: 3, hard: 0, weak: 0, revision: 1, strong: 2, averageConfidence: null, strengthScore: 85 }
+  ],
   topicStats: [...demoStrongTopics, ...demoWeakTopics, ...demoPracticingTopics],
   allTopicStats: [...demoStrongTopics, ...demoWeakTopics, ...demoPracticingTopics, ...demoUntouchedTopics],
   strongTopics: demoStrongTopics,
