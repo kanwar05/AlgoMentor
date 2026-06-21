@@ -1,8 +1,10 @@
 import { ArrowRight, BookOpenCheck, BrainCircuit, CircleCheck, CircleDashed, Code2, Flame, Sprout, Target, TrendingUp, TriangleAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Area, AreaChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import EmptyState from "../components/EmptyState";
+import ErrorState from "../components/ErrorState";
 import Heatmap from "../components/Heatmap";
-import LoadingState from "../components/LoadingState";
+import Loader from "../components/Loader";
 import PageHeader from "../components/PageHeader";
 import { useAuth } from "../context/AuthContext";
 import { demoAnalytics } from "../data/demoData";
@@ -10,18 +12,22 @@ import { useRemoteData } from "../hooks/useRemoteData";
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { data, loading, error } = useRemoteData("/analytics", demoAnalytics);
-  if (loading) return <LoadingState />;
-  if (error) return <p className="card text-rose-500">{error}</p>;
+  const { data, loading, error, refetch } = useRemoteData("/analytics", demoAnalytics);
+  const header = <PageHeader eyebrow="Your command center" title={`Good ${new Date().getHours() < 12 ? "morning" : "work"}, ${user?.name?.split(" ")?.[0] || "there"}.`} description="Here’s the signal beneath your latest practice." action={<Link to="/app/recommendations" className="btn-secondary">What should I solve? <ArrowRight size={16} /></Link>} />;
+  if (loading) return <>{header}<Loader /></>;
+  if (error) return <>{header}<ErrorState message={error} onRetry={refetch} /></>;
+  if (!data) return <>{header}<EmptyState title="No data available" description="Start solving problems to generate analytics." /></>;
+
   const {
-    summary,
-    weeklyActivity,
+    summary = {},
+    weeklyActivity = [],
     weakTopics = [],
     practicingTopics = [],
     untouchedTopics = [],
     strongTopics = [],
-    activity
-  } = data;
+    activity = []
+  } = data || {};
+  const streak = summary?.streak || {};
   const priorityTopics = [...weakTopics, ...practicingTopics, ...untouchedTopics];
   const distribution = [
     { name: "Strong", value: strongTopics.length, color: "#34d399" },
@@ -36,15 +42,15 @@ export default function DashboardPage() {
     { title: "Untouched Topics", items: untouchedTopics, icon: CircleDashed, color: "text-slate-400", empty: "Full topic coverage achieved" }
   ];
   const cards = [
-    { label: "Problems solved", value: summary.totalSolved, note: `${summary.solvedThisWeek} this week`, icon: BookOpenCheck, color: "bg-violet-100 text-violet-600 dark:bg-violet-400/10" },
-    { label: "LeetCode solved", value: summary.leetcodeSolved || 0, note: "Synced + manually logged", icon: Code2, color: "bg-amber-100 text-amber-600 dark:bg-amber-400/10" },
-    { label: "Codeforces solved", value: summary.codeforcesSolved || 0, note: "Unique accepted problems", icon: Code2, color: "bg-blue-100 text-blue-600 dark:bg-blue-400/10" },
-    { label: "Current streak", value: `${summary.streak.current} days`, note: `Personal best: ${summary.streak.longest}`, icon: Flame, color: "bg-orange-100 text-orange-600 dark:bg-orange-400/10" },
-    { label: "Interview ready", value: `${summary.readinessScore}%`, note: summary.readinessScore >= 70 ? "Strong momentum" : "Keep building coverage", icon: Target, color: "bg-lime-400/30 text-lime-700 dark:text-lime-400" }
+    { label: "Problems solved", value: summary?.totalSolved || 0, note: `${summary?.solvedThisWeek || 0} this week`, icon: BookOpenCheck, color: "bg-violet-100 text-violet-600 dark:bg-violet-400/10" },
+    { label: "LeetCode solved", value: summary?.leetcodeSolved || 0, note: "Synced + manually logged", icon: Code2, color: "bg-amber-100 text-amber-600 dark:bg-amber-400/10" },
+    { label: "Codeforces solved", value: summary?.codeforcesSolved || 0, note: "Unique accepted problems", icon: Code2, color: "bg-blue-100 text-blue-600 dark:bg-blue-400/10" },
+    { label: "Current streak", value: `${streak?.current || 0} days`, note: `Personal best: ${streak?.longest || 0}`, icon: Flame, color: "bg-orange-100 text-orange-600 dark:bg-orange-400/10" },
+    { label: "Interview ready", value: `${summary?.readinessScore || 0}%`, note: (summary?.readinessScore || 0) >= 70 ? "Strong momentum" : "Keep building coverage", icon: Target, color: "bg-lime-400/30 text-lime-700 dark:text-lime-400" }
   ];
   return (
     <>
-      <PageHeader eyebrow="Your command center" title={`Good ${new Date().getHours() < 12 ? "morning" : "work"}, ${user?.name?.split(" ")[0]}.`} description="Here’s the signal beneath your latest practice." action={<Link to="/app/recommendations" className="btn-secondary">What should I solve? <ArrowRight size={16} /></Link>} />
+      {header}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {cards.map(({ label, value, note, icon: Icon, color }) => <div key={label} className="card"><div className="flex items-start justify-between"><div><p className="text-sm font-semibold text-slate-500">{label}</p><p className="mt-2 font-display text-3xl font-extrabold">{value}</p><p className="mt-2 text-xs text-slate-400">{note}</p></div><span className={`grid h-11 w-11 place-items-center rounded-2xl ${color}`}><Icon size={21} /></span></div></div>)}
       </div>
@@ -54,7 +60,7 @@ export default function DashboardPage() {
           <div className="mt-5 h-52">
             <ResponsiveContainer width="100%" height="100%"><AreaChart data={weeklyActivity}><defs><linearGradient id="practice" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7f68e8" stopOpacity={.35}/><stop offset="100%" stopColor="#7f68e8" stopOpacity={0}/></linearGradient></defs><XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11 }} tickFormatter={(v) => new Date(v).toLocaleDateString("en", { weekday: "short" })}/><Tooltip contentStyle={{ borderRadius: 12, border: 0 }}/><Area type="monotone" dataKey="count" stroke="#7f68e8" strokeWidth={3} fill="url(#practice)" /></AreaChart></ResponsiveContainer>
           </div>
-          <div className="mt-2"><div className="mb-2 flex justify-between text-xs font-semibold"><span>Weekly goal</span><span>{summary.solvedThisWeek} / {summary.weeklyGoal}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full rounded-full bg-lime-400" style={{ width: `${summary.weeklyProgress}%` }} /></div></div>
+          <div className="mt-2"><div className="mb-2 flex justify-between text-xs font-semibold"><span>Weekly goal</span><span>{summary?.solvedThisWeek || 0} / {summary?.weeklyGoal || 0}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full rounded-full bg-lime-400" style={{ width: `${summary?.weeklyProgress || 0}%` }} /></div></div>
         </div>
         <div className="card bg-ink text-white dark:bg-[#181a1f]">
           <div className="flex items-center justify-between"><div><p className="font-display text-lg font-bold">Mentor signal</p><p className="text-xs text-white/40">Highest-leverage focus</p></div><BrainCircuit className="text-lime-400" /></div>
