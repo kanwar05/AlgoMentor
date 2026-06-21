@@ -120,7 +120,7 @@ npm run install:all
 npm run dev
 ```
 
-Open `http://localhost:5173`. The API runs at `http://localhost:5001`.
+Open `http://localhost:5173`. The API runs at `http://localhost:5002`.
 
 To add a portfolio-ready demo account:
 
@@ -149,7 +149,7 @@ The product works fully without an AI key; AI is an enhancement, not a dependenc
 MONGODB_URI=mongodb://127.0.0.1:27017/algomentor
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN=7d
-PORT=5001
+PORT=5002
 CLIENT_URL=http://localhost:5173
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
