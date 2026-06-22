@@ -29,14 +29,14 @@ export function AuthProvider({ children }) {
   const [auth, setAuth] = useState(readStoredAuth);
   const { user, demoMode } = auth;
 
-  const persist = (payload) => {
+  const persist = useCallback((payload) => {
     localStorage.setItem("algomentor_token", payload.token);
     localStorage.setItem("algomentor_user", JSON.stringify(payload.user));
     localStorage.removeItem("algomentor_demo");
     setAuth({ user: payload.user, demoMode: false });
-  };
+  }, []);
 
-  const authenticate = async (path, values) => {
+  const authenticate = useCallback(async (path, values) => {
     try {
       const response = await api.post(path, values);
       const payload = response?.data;
@@ -47,29 +47,29 @@ export function AuthProvider({ children }) {
       if (err.response) throw err;
       throw new Error(err.message || "Authentication failed");
     }
-  };
-  const login = (credentials) => authenticate("/auth/login", credentials);
-  const register = (values) => authenticate("/auth/register", values);
-  const enterDemo = () => {
+  }, [persist]);
+  const login = useCallback((credentials) => authenticate("/auth/login", credentials), [authenticate]);
+  const register = useCallback((values) => authenticate("/auth/register", values), [authenticate]);
+  const enterDemo = useCallback(() => {
     localStorage.removeItem("algomentor_token");
     localStorage.setItem("algomentor_demo", "true");
     localStorage.setItem("algomentor_user", JSON.stringify(demoUser));
     setAuth({ user: demoUser, demoMode: true });
-  };
+  }, []);
   const logout = useCallback(() => {
     clearStoredAuth();
     setAuth({ user: null, demoMode: false });
   }, []);
-  const updateUser = (next) => {
+  const updateUser = useCallback((next) => {
     setAuth((current) => ({ ...current, user: next }));
     localStorage.setItem("algomentor_user", JSON.stringify(next));
-  };
+  }, []);
 
   useEffect(() => subscribeToUnauthorized(logout), [logout]);
 
   const value = useMemo(
     () => ({ user, demoMode, login, register, enterDemo, logout, updateUser }),
-    [user, demoMode, logout]
+    [user, demoMode, login, register, enterDemo, logout, updateUser]
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

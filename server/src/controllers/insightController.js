@@ -1,9 +1,13 @@
 import OpenAI from "openai";
-import Problem from "../models/Problem.js";
 import RecommendationFeedback from "../models/RecommendationFeedback.js";
-import SyncedProblem from "../models/SyncedProblem.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { generateAnalytics } from "../services/analyticsService.js";
+import { problemBank } from "../data/problemBank.js";
+import { generateAnalyticsFromSnapshot } from "../services/analyticsService.js";
+import {
+  loadAnalyticsSnapshot,
+  loadRevisionCandidates,
+  loadSolvedRecommendationProblems
+} from "../services/insightDataService.js";
 import { recommendProblems } from "../services/recommendationService.js";
 import { completeRevisionTask, generateRevisionPlan } from "../services/revisionService.js";
 import { generateRoadmap } from "../services/roadmapService.js";
@@ -17,65 +21,51 @@ const recommendationFeedbackTypes = new Set([
   "save_for_later"
 ]);
 
-async function loadContext(user) {
-  const [manualProblems, syncedProblems] = await Promise.all([
-    Problem.find({ user: user._id }).sort({ solvedDate: -1 }).lean(),
-    SyncedProblem.find({ userId: user._id }).sort({ solvedAt: -1 }).lean()
-  ]);
-  const normalizedSynced = syncedProblems.map((problem) => ({
-    _id: problem._id,
-    title: problem.title,
-    platform: problem.platform,
-    difficulty: problem.difficulty,
-    topics: problem.topics,
-    status: problem.status,
-    confidence: problem.confidence,
-    notes: problem.notes,
-    lastReviewedAt: problem.lastReviewedAt,
-    link: problem.problemUrl,
-    solvedDate: problem.solvedAt,
-    synced: true
-  }));
+async function loadAnalytics(user) {
+  const snapshot = await loadAnalyticsSnapshot(user._id);
+  return generateAnalyticsFromSnapshot(snapshot, user.weeklyGoal);
+}
 
-  // Deduplication across manual and synced sources prevents inflated analytics.
-  const seen = new Set();
-  const problems = [...manualProblems, ...normalizedSynced].filter((problem) => {
-    const key = `${String(problem.platform).toLowerCase()}:${String(problem.title).toLowerCase().trim()}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).sort((a, b) => {
-    if (!a.solvedDate) return 1;
-    if (!b.solvedDate) return -1;
-    return new Date(b.solvedDate) - new Date(a.solvedDate);
-  });
-  const analytics = generateAnalytics(problems, user.weeklyGoal);
-  return { problems, analytics };
+export async function addRoadmapExplanation(
+  roadmap,
+  {
+    apiKey = process.env.OPENAI_API_KEY,
+    model = process.env.OPENAI_MODEL || "gpt-4o-mini",
+    client = apiKey ? new OpenAI({ apiKey, timeout: 10_000, maxRetries: 1 }) : null
+  } = {}
+) {
+  if (!client) return roadmap;
+
+  try {
+    const response = await client.responses.create({
+      model,
+      input: `In 120 words or less, coach a DSA student whose priority topics are ${roadmap.focusTopics.join(", ")}. Explain why this learning sequence works: ${roadmap.path.map((step) => step.topic).join(" -> ")}. Be practical and encouraging.`
+    });
+    roadmap.aiExplanation = response.output_text || null;
+  } catch {
+    roadmap.aiExplanation = null;
+  }
+  return roadmap;
 }
 
 export const getAnalytics = asyncHandler(async (req, res) => {
-  const { analytics } = await loadContext(req.user);
-  res.json(analytics);
+  res.json(await loadAnalytics(req.user));
 });
 
 export const getRoadmap = asyncHandler(async (req, res) => {
-  const { analytics } = await loadContext(req.user);
+  const analytics = await loadAnalytics(req.user);
   const roadmap = generateRoadmap(analytics.allTopicStats);
 
   if (req.query.explain === "true" && process.env.OPENAI_API_KEY) {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const response = await client.responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-      input: `In 120 words or less, coach a DSA student whose priority topics are ${roadmap.focusTopics.join(", ")}. Explain why this learning sequence works: ${roadmap.path.map((step) => step.topic).join(" -> ")}. Be practical and encouraging.`
-    });
-    roadmap.aiExplanation = response.output_text;
+    await addRoadmapExplanation(roadmap);
   }
   res.json(roadmap);
 });
 
 export const getRevisionPlan = asyncHandler(async (req, res) => {
-  const { problems, analytics } = await loadContext(req.user);
-  res.json(await generateRevisionPlan(req.user._id, problems, analytics.weakTopics));
+  const analytics = await loadAnalytics(req.user);
+  const candidates = await loadRevisionCandidates(req.user._id, analytics.weakTopics);
+  res.json(await generateRevisionPlan(req.user._id, candidates, analytics.weakTopics));
 });
 
 export const completeRevisionPlanTask = asyncHandler(async (req, res) => {
@@ -90,13 +80,14 @@ export const completeRevisionPlanTask = asyncHandler(async (req, res) => {
 });
 
 export const getRecommendations = asyncHandler(async (req, res) => {
-  const [{ problems, analytics }, feedback] = await Promise.all([
-    loadContext(req.user),
-    RecommendationFeedback.find({ userId: req.user._id }).sort({ createdAt: -1 }).lean()
+  const [analytics, feedback, solvedProblems] = await Promise.all([
+    loadAnalytics(req.user),
+    RecommendationFeedback.find({ userId: req.user._id }).sort({ createdAt: -1 }).lean(),
+    loadSolvedRecommendationProblems(req.user._id, problemBank.map((problem) => problem.title))
   ]);
   res.json({
     targetCompany: req.user.targetCompany,
-    recommendations: recommendProblems(problems, analytics.weakTopics, req.user.targetCompany, feedback)
+    recommendations: recommendProblems(solvedProblems, analytics.weakTopics, req.user.targetCompany, feedback)
   });
 });
 

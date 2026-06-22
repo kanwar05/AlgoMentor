@@ -43,6 +43,8 @@ The application also includes an interactive demo mode, so it can be explored wi
 - Weak-topic detection from solved, revision, weak, and confidence signals
 - Dependency-aware roadmap generated from a directed DSA topic graph
 - Optional OpenAI-generated roadmap coaching
+- MongoDB-side analytics aggregation and deduplication, with bounded projections for revision and recommendation queries
+- Graceful roadmap fallback when optional AI coaching is unavailable
 
 ### Adaptive Revision Engine
 
@@ -306,12 +308,22 @@ Example:
 
 ## Testing
 
-Run both test suites and the production build:
+Run the complete quality gate:
 
 ```bash
-npm test --prefix server
-npm test --prefix client
-npm run build
+npm run check
+```
+
+Available commands:
+
+```bash
+npm run test:server   # Node server tests
+npm run test:client   # Vitest client tests
+npm test              # Both test suites
+npm run lint          # ESLint across server and client source/tests
+npm run format:check  # Prettier checks for project configuration
+npm run build:client  # Production Vite build
+npm run check         # Lint, format, tests, and production build
 ```
 
 Current coverage includes:
@@ -327,8 +339,8 @@ Current coverage includes:
 At the time of this update:
 
 ```text
-Server: 58 passing tests
-Client: 26 passing tests
+Server: 81 passing tests
+Client: 28 passing tests
 ```
 
 ## Readiness formula

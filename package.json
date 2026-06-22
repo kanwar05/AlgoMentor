@@ -2,15 +2,28 @@
   "name": "algomentor",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "AI-powered DSA roadmap and analytics platform",
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "build": "npm run build --prefix client",
+    "build": "npm run build:client",
     "start": "npm run start --prefix server",
-    "test": "npm test --prefix server",
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "npm test --prefix server",
+    "test:client": "npm test --prefix client",
+    "build:client": "npm run build --prefix client",
+    "lint": "eslint server/src server/test client/src",
+    "format:check": "prettier --check package.json server/package.json client/package.json eslint.config.js .prettierrc.json",
+    "check": "npm run lint && npm run format:check && npm run test && npm run build:client",
     "install:all": "npm install && npm install --prefix server && npm install --prefix client"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^9.1.2",
+    "eslint": "^10.5.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.4"
   }
 }

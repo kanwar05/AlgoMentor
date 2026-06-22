@@ -4,6 +4,26 @@ export function notFound(req, _res, next) {
   next(error);
 }
 
+function humanizeField(field) {
+  return String(field)
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .toLowerCase();
+}
+
+export function duplicateKeyMessage(error) {
+  const fields = Object.keys(error.keyPattern || error.keyValue || {});
+  const modelName = error.model?.modelName || error.modelName;
+
+  if (fields.includes("email")) return "An account with that email already exists";
+
+  const fieldDescription = fields.length
+    ? fields.map(humanizeField).join(" and ")
+    : "unique value";
+  const modelDescription = modelName ? ` ${humanizeField(modelName)}` : "";
+  return `A${modelDescription} record with that ${fieldDescription} already exists`;
+}
+
 export function errorHandler(error, _req, res, _next) {
   let status = error.status || 500;
   let message = error.message || "Internal server error";
@@ -14,7 +34,7 @@ export function errorHandler(error, _req, res, _next) {
   }
   if (error.code === 11000) {
     status = 409;
-    message = "An account with that email already exists";
+    message = duplicateKeyMessage(error);
   }
   if (error.name === "CastError") {
     status = 400;
