@@ -462,34 +462,35 @@ Every component is normalized to 0–100. Weak and revision-heavy topic signals 
 Screenshots are stored in [`screenshots/`](screenshots/).
 
 ### Dashboard
-![AlgoMentor dashboard](<screenshots/Screenshot 2026-06-22 at 1.54.45 PM.png>)
+<img src="screenshots/Screenshot 2026-06-22 at 1.54.45 PM.png" />
 
 ### Problems
-![AlgoMentor analytics](<screenshots/Screenshot 2026-06-22 at 1.55.01 PM.png>)
+<img src="screenshots/Screenshot 2026-06-22 at 1.55.01 PM.png" />
 
 ### Analytics
-![AlgoMentor roadmap](<screenshots/Screenshot 2026-06-22 at 1.55.13 PM.png>)
+<img src="screenshots/Screenshot 2026-06-22 at 1.55.13 PM.png" />
 
 ### Roadmap
-![AlgoMentor revision plan](<screenshots/Screenshot 2026-06-22 at 1.55.20 PM.png>)
+<img src="screenshots/Screenshot 2026-06-22 at 1.55.20 PM.png" />
 
 ### Revision Plan
-![AlgoMentor revision plan](<screenshots/Screenshot 2026-06-22 at 1.55.32 PM.png>)
+<img src="screenshots/Screenshot 2026-06-22 at 1.55.32 PM.png" />
 
 ### Recommended
-![AlgoMentor revision plan](<screenshots/Screenshot 2026-06-22 at 1.55.41 PM.png>)
+<img src="screenshots/Screenshot 2026-06-22 at 1.55.41 PM.png" />
 
 ### Mock Interview
-![AlgoMentor revision plan](<screenshots/Screenshot 2026-06-22 at 1.55.50 PM.png>)
+<img src="screenshots/Screenshot 2026-06-22 at 1.55.50 PM.png" />
 
 ### Problem sync
-![AlgoMentor revision plan](<screenshots/Screenshot 2026-06-22 at 1.55.59 PM.png>)
+<img src="screenshots/Screenshot 2026-06-22 at 1.55.59 PM.png" />
 
 ### Prrofile
-![AlgoMentor revision plan](<screenshots/Screenshot 2026-06-22 at 1.56.08 PM.png>)
+<img src="screenshots/Screenshot 2026-06-22 at 1.56.08 PM.png" />
 
 ### Dark Mode
-![AlgoMentor revision plan](<screenshots/Screenshot 2026-06-22 at 1.56.19 PM.png>)
+<img src="screenshots/Screenshot 2026-06-22 at 1.56.19 PM.png" />
+
 
 ## Future improvements
 
