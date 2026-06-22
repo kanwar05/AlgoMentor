@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import mongoose from "mongoose";
-import { getMockInterview } from "../src/controllers/mockInterviewController.js";
+import { completeMockInterview, getMockInterview } from "../src/controllers/mockInterviewController.js";
 import MockInterview from "../src/models/MockInterview.js";
 import {
   buildNextPracticePlan,
@@ -9,6 +9,61 @@ import {
   mockInterviewExpiry,
   scoreMockInterview
 } from "../src/services/mockInterviewService.js";
+
+async function runCompleteMockInterview(interview, attempts) {
+  const original = MockInterview.findOne;
+  const userId = interview.userId;
+  let body;
+  let error;
+  MockInterview.findOne = async () => interview;
+
+  try {
+    await completeMockInterview(
+      {
+        user: { _id: userId },
+        params: { id: String(interview._id) },
+        body: { attempts }
+      },
+      { json(payload) { body = payload; } },
+      (nextError) => { error = nextError; }
+    );
+    return { body, error };
+  } finally {
+    MockInterview.findOne = original;
+  }
+}
+
+function completionInterview(expiresAt) {
+  const problems = generateMockInterviewProblems({
+    company: "Google",
+    difficulty: "Medium",
+    duration: 45
+  });
+  let saveCalls = 0;
+  return {
+    _id: new mongoose.Types.ObjectId(),
+    userId: new mongoose.Types.ObjectId(),
+    company: "Google",
+    difficulty: "Medium",
+    duration: 45,
+    status: "active",
+    expiresAt,
+    problems: problems.map((problem) => ({
+      ...problem,
+      toObject() {
+        const { toObject: _toObject, ...plain } = this;
+        return plain;
+      }
+    })),
+    get saveCalls() {
+      return saveCalls;
+    },
+    async save() {
+      saveCalls += 1;
+      return this;
+    }
+  };
+}
 
 test("MockInterview model validates a persistent active session", () => {
   const startedAt = new Date("2026-06-20T10:00:00.000Z");
@@ -141,4 +196,39 @@ test("another user's or missing mock interview returns 404", async () => {
   } finally {
     MockInterview.findOne = original;
   }
+});
+
+test("expired mock interview submissions are rejected without saving results", async () => {
+  const interview = completionInterview(new Date(Date.now() - 1_000));
+  const attempts = interview.problems.map((problem) => ({
+    problemId: problem.problemId,
+    result: "solved"
+  }));
+
+  const { body, error } = await runCompleteMockInterview(interview, attempts);
+
+  assert.equal(body, undefined);
+  assert.equal(error.status, 400);
+  assert.match(error.message, /mock interview has expired/i);
+  assert.equal(interview.status, "active");
+  assert.equal(interview.score, undefined);
+  assert.equal(interview.saveCalls, 0);
+});
+
+test("active mock interview submissions are scored and saved", async () => {
+  const interview = completionInterview(new Date(Date.now() + 60_000));
+  const attempts = [
+    { problemId: interview.problems[0].problemId, result: "solved" },
+    { problemId: interview.problems[1].problemId, result: "hint" }
+  ];
+
+  const { body, error } = await runCompleteMockInterview(interview, attempts);
+
+  assert.equal(error, undefined);
+  assert.equal(body.interview, interview);
+  assert.equal(interview.status, "completed");
+  assert.equal(interview.score, 80);
+  assert.equal(interview.problems[0].result, "solved");
+  assert.equal(interview.problems[1].result, "hint");
+  assert.equal(interview.saveCalls, 1);
 });

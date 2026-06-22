@@ -62,6 +62,9 @@ export const completeMockInterview = asyncHandler(async (req, res) => {
   const interview = await MockInterview.findOne({ _id: req.params.id, userId: req.user._id });
   if (!interview) throw new HttpError(404, "Mock interview not found");
   if (interview.status === "completed") return res.json({ interview });
+  if (new Date(interview.expiresAt).getTime() <= Date.now()) {
+    throw new HttpError(400, "This mock interview has expired and can no longer be submitted");
+  }
 
   const result = scoreMockInterview(interview.problems.map((problem) => problem.toObject()), req.body.attempts || []);
   const completedAt = new Date();
