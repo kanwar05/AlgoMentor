@@ -34,7 +34,7 @@ export default function AppLayout() {
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r bg-white p-5 transition-transform dark:bg-[#14161a] lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between">
           <Brand />
-          <button onClick={() => setMobileOpen(false)} className="lg:hidden"><X size={20} /></button>
+          <button aria-label="Close navigation menu" onClick={() => setMobileOpen(false)} className="lg:hidden"><X size={20} /></button>
         </div>
         <div className="mt-8 rounded-2xl bg-ink p-4 text-white dark:bg-white/5">
           <div className="flex items-center gap-3">
@@ -64,7 +64,7 @@ export default function AppLayout() {
       </aside>
       <div className="lg:pl-72">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-canvas/85 px-4 backdrop-blur-xl dark:bg-[#101114]/85 md:px-8">
-          <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 lg:hidden"><Menu /></button>
+          <button aria-label="Open navigation menu" onClick={() => setMobileOpen(true)} className="rounded-lg p-2 lg:hidden"><Menu /></button>
           <div className="hidden items-center gap-2 text-sm text-slate-400 lg:flex"><BrainCircuit size={17} /> Adaptive practice workspace <ChevronRight size={14} /> <span className="text-ink dark:text-white">{user?.targetCompany}</span></div>
           <NavLink to="/app/problems/new" className="btn-primary ml-auto">Log problem <span className="text-lg leading-none">+</span></NavLink>
         </header>

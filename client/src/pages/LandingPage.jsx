@@ -43,7 +43,7 @@ export default function LandingPage() {
             </div>
             <p className="mt-4 text-xs text-slate-400">No credit card · Your progress stays yours</p>
           </div>
-          <div className="relative mx-auto mt-16 max-w-5xl rounded-[2rem] border bg-white p-3 shadow-[0_30px_100px_rgba(37,35,49,.16)]">
+          <div id="score" className="relative mx-auto mt-16 max-w-5xl scroll-mt-6 rounded-[2rem] border bg-white p-3 shadow-[0_30px_100px_rgba(37,35,49,.16)]">
             <div className="rounded-[1.4rem] bg-ink p-5 text-white md:p-8">
               <div className="grid gap-4 md:grid-cols-4">
                 {[["64", "Problems solved", "+9 this week"], ["72%", "Interview ready", "+6% this month"], ["6 days", "Current streak", "Best: 14 days"], ["3", "Focus topics", "DP · Graphs · Windows"]].map(([value, label, note], index) => (

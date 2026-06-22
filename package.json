@@ -14,6 +14,7 @@
     "build:client": "npm run build --prefix client",
     "lint": "eslint server/src server/test client/src",
     "format:check": "prettier --check package.json server/package.json client/package.json eslint.config.js .prettierrc.json",
+    "security:audit": "npm audit --omit=dev && npm audit --omit=dev --prefix server && npm audit --omit=dev --prefix client",
     "check": "npm run lint && npm run format:check && npm run test && npm run build:client",
     "install:all": "npm install && npm install --prefix server && npm install --prefix client"
   },

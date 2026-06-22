@@ -103,4 +103,23 @@ describe("MockInterviewPage", () => {
     expect(await screen.findByText("Course Schedule")).toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith(`/mock-interviews/${activeInterview._id}`);
   });
+
+  it("disables results and offers a new interview when the session is expired", async () => {
+    const expiredInterview = {
+      ...activeInterview,
+      expiresAt: new Date(Date.now() - 60_000).toISOString()
+    };
+    localStorage.setItem("algomentor_active_mock_interview", expiredInterview._id);
+    api.get.mockResolvedValueOnce({ data: { interview: expiredInterview } });
+    render(<MemoryRouter><MockInterviewPage /></MemoryRouter>);
+
+    expect(await screen.findByText("Interview expired")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Solved" })[0]).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /finish and score interview/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /start another interview/i }));
+
+    expect(api.patch).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /start mock interview/i })).toBeInTheDocument();
+  });
 });

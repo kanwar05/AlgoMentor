@@ -214,6 +214,107 @@ VITE_API_URL=http://localhost:5002/api
 
 `OPENAI_API_KEY` is optional. The core product works without AI.
 
+## Deployment guide
+
+The recommended beginner-friendly setup is:
+
+- **MongoDB Atlas** for the database
+- **Render** for the Express API
+- **Vercel** for the Vite client
+
+### 1. Create the MongoDB Atlas database
+
+1. Create an Atlas project and cluster.
+2. Create a database user with a strong, unique password.
+3. Add the backend host to the Atlas IP access list. For an initial test deployment, Atlas also supports temporary broader access, but restrict it before a serious public launch.
+4. Copy the application connection string and set the database name to `algomentor`.
+
+Example:
+
+```env
+MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/algomentor?retryWrites=true&w=majority
+```
+
+Atlas is recommended because revision completion uses MongoDB transactions, which require a replica set or sharded cluster.
+
+### 2. Deploy the backend on Render
+
+Create a Render **Web Service** from the repository with:
+
+```text
+Root Directory: server
+Build Command: npm ci
+Start Command: npm start
+Health Check Path: /api/health
+```
+
+Configure these environment variables:
+
+```env
+NODE_ENV=production
+MONGODB_URI=your_atlas_connection_string
+JWT_SECRET=your_long_random_secret
+JWT_EXPIRES_IN=7d
+CLIENT_URL=https://your-frontend.vercel.app
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+```
+
+Generate a strong JWT secret locally:
+
+```bash
+openssl rand -base64 48
+```
+
+Render provides `PORT` automatically. After deployment, confirm the API is healthy:
+
+```text
+https://your-backend.onrender.com/api/health
+```
+
+### 3. Deploy the frontend on Vercel
+
+Import the same repository into Vercel with:
+
+```text
+Root Directory: client
+Framework Preset: Vite
+Build Command: npm run build
+Output Directory: dist
+```
+
+Set the production environment variable:
+
+```env
+VITE_API_URL=https://your-backend.onrender.com/api
+```
+
+The included `client/vercel.json` rewrites browser routes to `index.html`, so refreshing routes such as `/app/analytics` continues to work.
+
+### 4. Finalize CORS
+
+Once Vercel gives you the production frontend URL:
+
+1. Set Render's `CLIENT_URL` to that exact URL.
+2. Do not include a trailing slash.
+3. Redeploy the backend.
+4. Test login and registration from the production frontend.
+
+### Post-deployment checklist
+
+- Open the frontend and refresh a deep route such as `/app/analytics`.
+- Register a new account and log in again.
+- Add, edit, and delete a problem.
+- Complete a revision task and verify its next review date.
+- Test an active and an expired mock interview.
+- Test manual import and connected-platform sync.
+- Verify the roadmap works without `OPENAI_API_KEY`.
+- Check mobile navigation and dark mode.
+- Confirm the browser console has no CORS or mixed-content errors.
+- Confirm `/api/health` returns a successful JSON response.
+
+> **Important:** Do not deploy seeded demo credentials such as `demo@algomentor.dev / DemoPass123!` to a public production database. Demo mode in the client does not require a database account.
+
 ## API overview
 
 All routes except registration, login, and health require:
@@ -323,6 +424,7 @@ npm test              # Both test suites
 npm run lint          # ESLint across server and client source/tests
 npm run format:check  # Prettier checks for project configuration
 npm run build:client  # Production Vite build
+npm run security:audit # Production dependency audit for root, server, and client
 npm run check         # Lint, format, tests, and production build
 ```
 
@@ -340,7 +442,7 @@ At the time of this update:
 
 ```text
 Server: 81 passing tests
-Client: 28 passing tests
+Client: 29 passing tests
 ```
 
 ## Readiness formula
@@ -377,10 +479,4 @@ Screenshots are stored in [`screenshots/`](screenshots/).
 - Cohort benchmarking
 - LLM-generated hints grounded in the user's own notes
 
-## Resume bullet points
 
-- Engineered a full-stack adaptive DSA learning platform that unifies manual practice, LeetCode/Codeforces sync, topic mastery analytics, readiness scoring, and dependency-aware roadmaps.
-- Built a persistent spaced-repetition engine with review attempts, adaptive intervals, ease factors, due-date scheduling, confidence, and time-spent signals.
-- Designed a feedback-aware recommendation engine that adapts difficulty and topic weighting while suppressing dismissed or already-solved suggestions.
-- Implemented persistent timed mock interviews with company/difficulty targeting, transparent scoring, weak-topic extraction, refresh recovery, and generated next-practice plans.
-- Secured user-scoped APIs with JWT authentication, ownership-safe queries, validation, centralized error handling, idempotent imports, and comprehensive frontend/backend tests.

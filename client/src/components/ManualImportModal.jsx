@@ -52,7 +52,7 @@ export default function ManualImportModal({ open, onClose, onImport, loading }) 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4">
       <div className="card mx-auto my-4 w-full max-w-3xl">
-        <div className="flex items-start justify-between"><div><p className="font-display text-xl font-bold">Import complete solved history</p><p className="mt-1 text-sm text-slate-500">Export every solved LeetCode problem locally, then upload one file.</p></div><button onClick={onClose}><X /></button></div>
+        <div className="flex items-start justify-between"><div><p className="font-display text-xl font-bold">Import complete solved history</p><p className="mt-1 text-sm text-slate-500">Export every solved LeetCode problem locally, then upload one file.</p></div><button aria-label="Close manual import dialog" onClick={onClose}><X /></button></div>
 
         <div className="mt-5 rounded-2xl bg-violet-50 p-4 dark:bg-violet-400/10">
           <p className="font-bold">LeetCode full-history export</p>
