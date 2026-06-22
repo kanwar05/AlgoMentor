@@ -5,6 +5,12 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { HttpError } from "../utils/httpError.js";
 import { normalizeTopic, normalizeTopics } from "../utils/topicNormalizer.js";
 
+export const MAX_PROBLEM_SEARCH_LENGTH = 100;
+
+export function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const sanitizeProblem = (body) => ({
   title: body.title,
   platform: body.platform,
@@ -19,10 +25,14 @@ const sanitizeProblem = (body) => ({
 
 export const listProblems = asyncHandler(async (req, res) => {
   const { search = "", difficulty, status, topic, platform, page = 1, limit = 50 } = req.query;
+  const normalizedSearch = String(search).trim();
+  if (normalizedSearch.length > MAX_PROBLEM_SEARCH_LENGTH) {
+    throw new HttpError(400, `Search must be at most ${MAX_PROBLEM_SEARCH_LENGTH} characters`);
+  }
   const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
   const safePage = Math.max(Number(page) || 1, 1);
   const commonMatch = {};
-  if (search) commonMatch.title = { $regex: search, $options: "i" };
+  if (normalizedSearch) commonMatch.title = { $regex: escapeRegex(normalizedSearch), $options: "i" };
   if (difficulty) commonMatch.difficulty = difficulty;
   if (status) commonMatch.status = status;
   if (topic) commonMatch.topics = normalizeTopic(topic);
