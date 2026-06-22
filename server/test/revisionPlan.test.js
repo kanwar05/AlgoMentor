@@ -98,6 +98,31 @@ class InMemoryReviewAttemptStore {
   }
 }
 
+function createInMemorySession(store, attemptStore) {
+  return {
+    async withTransaction(operation) {
+      const taskSnapshot = structuredClone(store.tasks);
+      const taskSequence = store.sequence;
+      const attemptSnapshot = structuredClone(attemptStore.attempts);
+      const attemptSequence = attemptStore.sequence;
+      try {
+        return await operation();
+      } catch (error) {
+        store.tasks = taskSnapshot;
+        store.sequence = taskSequence;
+        attemptStore.attempts = attemptSnapshot;
+        attemptStore.sequence = attemptSequence;
+        throw error;
+      }
+    },
+    async endSession() {}
+  };
+}
+
+const transactionOptions = (store, attemptStore) => ({
+  startSession: async () => createInMemorySession(store, attemptStore)
+});
+
 const problem = (id, overrides = {}) => ({
   _id: id,
   title: `Problem ${id}`,
@@ -172,7 +197,7 @@ test("invalid review metrics are rejected before completing the task", async () 
       userId: "user-1",
       result: "solved",
       confidence: 120
-    }, store, attemptStore),
+    }, store, attemptStore, transactionOptions(store, attemptStore)),
     (error) => error.status === 400 && /confidence/i.test(error.message)
   );
   assert.equal(task.completed, false);
@@ -207,7 +232,7 @@ test("completing a revision task persists result and timestamp", async () => {
     completedAt,
     timeTaken: 300,
     confidence: 60
-  }, store, attemptStore);
+  }, store, attemptStore, transactionOptions(store, attemptStore));
 
   assert.equal(completed.completed, true);
   assert.equal(completed.result, "hint");
@@ -220,6 +245,29 @@ test("completing a revision task persists result and timestamp", async () => {
   assert.equal(completed.attempt.nextReviewAt.toISOString(), "2026-06-21T10:00:00.000Z");
 });
 
+test("revision completion rolls back the task when attempt creation fails", async () => {
+  const store = new InMemoryRevisionTaskStore();
+  const attemptStore = new InMemoryReviewAttemptStore();
+  const task = await store.ensurePending("user-1", "problem-1");
+  attemptStore.create = async () => {
+    throw new Error("Attempt creation failed");
+  };
+
+  await assert.rejects(
+    completeRevisionTask({
+      taskId: task._id,
+      userId: "user-1",
+      result: "solved"
+    }, store, attemptStore, transactionOptions(store, attemptStore)),
+    /Attempt creation failed/
+  );
+
+  assert.equal(store.tasks[0].completed, false);
+  assert.equal(store.tasks[0].completedAt, null);
+  assert.equal(store.tasks[0].result, null);
+  assert.equal(attemptStore.attempts.length, 0);
+});
+
 test("a user cannot complete another user's revision task", async () => {
   const store = new InMemoryRevisionTaskStore();
   const attemptStore = new InMemoryReviewAttemptStore();
@@ -230,7 +278,7 @@ test("a user cannot complete another user's revision task", async () => {
       taskId: task._id,
       userId: "user-2",
       result: "solved"
-    }, store, attemptStore),
+    }, store, attemptStore, transactionOptions(store, attemptStore)),
     (error) => error.status === 404 && /not found/i.test(error.message)
   );
   assert.equal(task.completed, false);
@@ -250,7 +298,7 @@ test("completed tasks are replaced by a new task on the adaptive due day", async
     userId: "user-1",
     result: "solved",
     completedAt: now
-  }, store, attemptStore);
+  }, store, attemptStore, transactionOptions(store, attemptStore));
   const refreshed = await generateRevisionPlan("user-1", problems, weakTopics, { store, attemptStore, now });
   const refreshedTasks = refreshed.days.flatMap((day) => day.tasks);
 
