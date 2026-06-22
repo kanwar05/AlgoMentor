@@ -187,10 +187,79 @@ function calculateStreak(activity) {
   return { current, longest };
 }
 
+function analyticsFromStats({
+  topicStats,
+  topics,
+  activity,
+  totals,
+  platformCounts,
+  weeklyGoal
+}) {
+  const weakTopics = detectWeakTopics(topicStats);
+  const strongTopics = topicsByStatus(topicStats, "strong");
+  const practicingTopics = topicsByStatus(topicStats, "practicing");
+  const untouchedTopics = topicsByStatus(topicStats, "untouched");
+  const streak = calculateStreak(activity);
+  const last7 = activity.slice(-7);
+  const solvedThisWeek = last7.reduce((sum, day) => sum + day.count, 0);
+  const readiness = calculateReadinessFromCounts({
+    total: totals.totalSolved,
+    mediumHard: totals.mediumHard,
+    topicStats,
+    activity
+  });
+  const topicDistribution = {
+    strong: strongTopics.length,
+    weak: weakTopics.length,
+    practicing: practicingTopics.length,
+    untouched: untouchedTopics.length
+  };
+
+  return {
+    topics,
+    summary: {
+      totalSolved: totals.totalSolved,
+      platformCounts,
+      leetcodeSolved: platformCounts.LeetCode || 0,
+      codeforcesSolved: platformCounts.Codeforces || 0,
+      difficulty: {
+        Easy: totals.easy,
+        Medium: totals.medium,
+        Hard: totals.hard
+      },
+      streak,
+      solvedThisWeek,
+      weeklyGoal,
+      weeklyProgress: clamp(Math.round((solvedThisWeek / weeklyGoal) * 100)),
+      readinessScore: readiness.score,
+      topicDistribution
+    },
+    readiness,
+    topicStats: topicStats
+      .filter((item) => item.total > 0)
+      .sort((a, b) => b.total - a.total || a.topic.localeCompare(b.topic)),
+    allTopicStats: [...topicStats].sort((a, b) => b.total - a.total || a.topic.localeCompare(b.topic)),
+    weakTopics: weakTopics.slice(0, 8),
+    practicingTopics,
+    untouchedTopics,
+    strongTopics,
+    topicDistribution,
+    activity,
+    weeklyActivity: last7
+  };
+}
+
 // Dynamic scoring combines normalized readiness signals into a transparent 0–100 score.
 export function calculateReadiness(problems, topicStats, _weakTopics, activity) {
-  const total = problems.length;
-  const mediumHard = problems.filter((item) => item.difficulty !== "Easy").length;
+  return calculateReadinessFromCounts({
+    total: problems.length,
+    mediumHard: problems.filter((item) => item.difficulty !== "Easy").length,
+    topicStats,
+    activity
+  });
+}
+
+export function calculateReadinessFromCounts({ total, mediumHard, topicStats, activity }) {
   const recentActiveDays = activity.slice(-28).filter((day) => day.count > 0).length;
   const topicStateWeight = { strong: 100, practicing: 65, weak: 15, untouched: 0 };
   const topicCoverage = topicStats.length
@@ -216,55 +285,96 @@ export function calculateReadiness(problems, topicStats, _weakTopics, activity) 
 export function generateAnalytics(problems, weeklyGoal = 10) {
   const topicStats = buildTopicStats(problems);
   const topics = buildTopicMasteryStats(problems);
-  const weakTopics = detectWeakTopics(topicStats);
-  const strongTopics = topicsByStatus(topicStats, "strong");
-  const practicingTopics = topicsByStatus(topicStats, "practicing");
-  const untouchedTopics = topicsByStatus(topicStats, "untouched");
   const activity = buildActivity(problems);
-  const streak = calculateStreak(activity);
   const difficulty = { Easy: 0, Medium: 0, Hard: 0 };
   problems.forEach((problem) => { difficulty[problem.difficulty] += 1; });
-  const last7 = activity.slice(-7);
-  const solvedThisWeek = last7.reduce((sum, day) => sum + day.count, 0);
-  const readiness = calculateReadiness(problems, topicStats, weakTopics, activity);
-  const topicDistribution = {
-    strong: strongTopics.length,
-    weak: weakTopics.length,
-    practicing: practicingTopics.length,
-    untouched: untouchedTopics.length
-  };
   const platformCounts = problems.reduce((counts, problem) => {
     const platform = problem.platform || "Other";
     counts[platform] = (counts[platform] || 0) + 1;
     return counts;
   }, {});
 
-  return {
+  return analyticsFromStats({
+    topicStats,
     topics,
-    summary: {
-      totalSolved: problems.length,
-      platformCounts,
-      leetcodeSolved: platformCounts.LeetCode || 0,
-      codeforcesSolved: platformCounts.Codeforces || 0,
-      difficulty,
-      streak,
-      solvedThisWeek,
-      weeklyGoal,
-      weeklyProgress: clamp(Math.round((solvedThisWeek / weeklyGoal) * 100)),
-      readinessScore: readiness.score,
-      topicDistribution
-    },
-    readiness,
-    topicStats: topicStats
-      .filter((item) => item.total > 0)
-      .sort((a, b) => b.total - a.total || a.topic.localeCompare(b.topic)),
-    allTopicStats: [...topicStats].sort((a, b) => b.total - a.total || a.topic.localeCompare(b.topic)),
-    weakTopics: weakTopics.slice(0, 8),
-    practicingTopics,
-    untouchedTopics,
-    strongTopics,
-    topicDistribution,
     activity,
-    weeklyActivity: last7
-  };
+    totals: {
+      totalSolved: problems.length,
+      mediumHard: difficulty.Medium + difficulty.Hard,
+      easy: difficulty.Easy,
+      medium: difficulty.Medium,
+      hard: difficulty.Hard
+    },
+    platformCounts,
+    weeklyGoal
+  });
+}
+
+export function generateAnalyticsFromSnapshot(snapshot, weeklyGoal = 10, now = new Date()) {
+  const aggregatedByTopic = new Map(snapshot.topics.map((item) => [item._id, item]));
+  const topicNames = [...new Set([...TOPICS, ...snapshot.topics.map((item) => item._id)])];
+  const topicStats = topicNames.map((topic) => {
+    const item = aggregatedByTopic.get(topic) || {};
+    const total = item.total || 0;
+    const weak = item.weak || 0;
+    const revision = item.revision || 0;
+    const weakRatio = total ? weak / total : 0;
+    const revisionRatio = total ? revision / total : 0;
+    return {
+      topic,
+      total,
+      solved: Math.max(total - weak - revision, 0),
+      revision,
+      weak,
+      totalSolved: total,
+      weakCount: weak,
+      revisionCount: revision,
+      weakRatio,
+      revisionRatio,
+      status: classifyTopic({ totalSolved: total, weakCount: weak, revisionCount: revision })
+    };
+  });
+  const topics = snapshot.topics
+    .map((item) => {
+      const averageConfidence = item.confidenceCount
+        ? Math.round(item.confidenceTotal / item.confidenceCount)
+        : null;
+      const strong = Math.max(item.total - item.weak - item.revision, 0);
+      return {
+        name: item._id,
+        solved: item.total,
+        easy: item.easy,
+        medium: item.medium,
+        hard: item.hard,
+        weak: item.weak,
+        revision: item.revision,
+        strong,
+        averageConfidence,
+        strengthScore: calculateTopicStrength({
+          solved: item.total,
+          weak: item.weak,
+          revision: item.revision,
+          averageConfidence
+        })
+      };
+    })
+    .sort((a, b) => b.solved - a.solved || a.name.localeCompare(b.name));
+  const activityCounts = new Map(snapshot.activity.map((item) => [item._id, item.count]));
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const activity = Array.from({ length: 120 }, (_, index) => {
+    const date = new Date(today.getTime() - (119 - index) * DAY);
+    const key = dateKey(date);
+    return { date: key, count: activityCounts.get(key) || 0 };
+  });
+  const platformCounts = Object.fromEntries(snapshot.platforms.map((item) => [item._id, item.count]));
+
+  return analyticsFromStats({
+    topicStats,
+    topics,
+    activity,
+    totals: snapshot.totals,
+    platformCounts,
+    weeklyGoal
+  });
 }

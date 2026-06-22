@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, BrainCircuit, Check, GitBranch, Menu, Sparkles, Target, Zap } from "lucide-react";
+import { ArrowRight, BarChart3, BrainCircuit, Check, GitBranch, Sparkles, Target } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import Brand from "../components/Brand";
 import { useAuth } from "../context/AuthContext";
