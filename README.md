@@ -462,7 +462,7 @@ Every component is normalized to 0–100. Weak and revision-heavy topic signals 
 Screenshots are stored in [`screenshots/`](screenshots/).
 
 ### Dashboard
-<img src="screenshots/Screenshot 2026-06-22 at 1.54.45 PM.png" />
+<img src="screenshots/Screenshot 2026-06-22 at 1.54.45 PM.png" alt="dashboard" />
 
 ### Problems
 <img src="screenshots/Screenshot 2026-06-22 at 1.55.01 PM.png" />
