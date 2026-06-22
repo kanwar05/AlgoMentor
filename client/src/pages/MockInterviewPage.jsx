@@ -48,6 +48,10 @@ export default function MockInterviewPage() {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const isExpired = interview?.status === "active" &&
+    Boolean(interview.expiresAt) &&
+    new Date(interview.expiresAt).getTime() <= Date.now() &&
+    secondsLeft === 0;
 
   const loadInterview = useCallback(async (id) => {
     if (!id || demoMode) return;
@@ -101,7 +105,7 @@ export default function MockInterviewPage() {
   };
 
   const complete = async () => {
-    if (!interview) return;
+    if (!interview || isExpired) return;
     setLoading(true);
     setError("");
     const payload = (interview.problems || []).map((problem) => ({
@@ -197,14 +201,24 @@ export default function MockInterviewPage() {
     <>
       {header}
       {error && <p className="card mb-4 border-rose-200 text-sm text-rose-500">{error}</p>}
+      {isExpired && (
+        <div className="card mb-4 border-rose-200 bg-rose-50 dark:bg-rose-400/10">
+          <p className="font-display text-lg font-bold text-rose-700 dark:text-rose-300">Interview expired</p>
+          <p className="mt-1 text-sm text-rose-600 dark:text-rose-200">The time limit has ended, so this interview can no longer be submitted. Start a new session when you are ready.</p>
+        </div>
+      )}
       <div className="sticky top-20 z-10 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink px-5 py-4 text-white shadow-lg">
         <div><p className="text-xs font-bold uppercase tracking-wider text-white/45">{interview.company} · {interview.difficulty}</p><p className="mt-1 text-sm font-semibold">{answered} / {interview.problems.length} results recorded</p></div>
         <div className={`flex items-center gap-2 font-display text-3xl font-extrabold ${secondsLeft <= 300 ? "text-rose-400" : "text-lime-400"}`}><Timer /> {formatTime(secondsLeft)}</div>
       </div>
       <div className="space-y-4">
-        {(interview.problems || []).map((problem, index) => <article key={problem.problemId} className="card"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-violet-500">Problem {index + 1}</p><h2 className="mt-1 font-display text-xl font-extrabold">{problem.title}</h2><div className="mt-3 flex flex-wrap gap-2"><StatusPill>{problem.difficulty}</StatusPill>{(problem.topics || []).map((topic) => <StatusPill key={topic}>{topic}</StatusPill>)}</div></div>{problem.link && <a href={problem.link} target="_blank" rel="noreferrer" className="btn-secondary">Open problem <ArrowUpRight size={15} /></a>}</div><div className="mt-5 flex flex-wrap gap-2 border-t pt-4">{resultOptions.map(([result, label, style]) => <button key={result} type="button" onClick={() => setAttempts({ ...attempts, [problem.problemId]: result })} className={`rounded-xl border px-3 py-2 text-sm font-bold ${attempts[problem.problemId] === result ? style : "bg-white text-slate-500 dark:bg-white/5"}`}>{label}</button>)}</div></article>)}
+        {(interview.problems || []).map((problem, index) => <article key={problem.problemId} className="card"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-violet-500">Problem {index + 1}</p><h2 className="mt-1 font-display text-xl font-extrabold">{problem.title}</h2><div className="mt-3 flex flex-wrap gap-2"><StatusPill>{problem.difficulty}</StatusPill>{(problem.topics || []).map((topic) => <StatusPill key={topic}>{topic}</StatusPill>)}</div></div>{problem.link && <a href={problem.link} target="_blank" rel="noreferrer" className="btn-secondary">Open problem <ArrowUpRight size={15} /></a>}</div><div className="mt-5 flex flex-wrap gap-2 border-t pt-4">{resultOptions.map(([result, label, style]) => <button key={result} type="button" disabled={isExpired} onClick={() => setAttempts({ ...attempts, [problem.problemId]: result })} className={`rounded-xl border px-3 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 ${attempts[problem.problemId] === result ? style : "bg-white text-slate-500 dark:bg-white/5"}`}>{label}</button>)}</div></article>)}
       </div>
-      <div className="mt-4 flex justify-end"><button type="button" onClick={complete} disabled={loading} className="btn-primary px-6 py-3">{loading ? "Scoring…" : secondsLeft === 0 ? "Submit expired interview" : "Finish and score interview"}</button></div>
+      <div className="mt-4 flex justify-end">
+        {isExpired
+          ? <button type="button" onClick={reset} className="btn-primary px-6 py-3"><RotateCcw size={16} /> Start another interview</button>
+          : <button type="button" onClick={complete} disabled={loading} className="btn-primary px-6 py-3">{loading ? "Scoring…" : "Finish and score interview"}</button>}
+      </div>
     </>
   );
 }

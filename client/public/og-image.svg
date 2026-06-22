@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f7f8f3"/>
+  <circle cx="1050" cy="90" r="220" fill="#7f68e8" opacity=".2"/>
+  <circle cx="100" cy="570" r="250" fill="#b8f34a" opacity=".3"/>
+  <rect x="80" y="80" width="1040" height="470" rx="48" fill="#252331"/>
+  <text x="140" y="245" fill="#b8f34a" font-family="Arial, sans-serif" font-size="42" font-weight="700">ALGOMENTOR</text>
+  <text x="140" y="340" fill="#ffffff" font-family="Arial, sans-serif" font-size="68" font-weight="800">Adaptive DSA preparation</text>
+  <text x="140" y="415" fill="#cbd5e1" font-family="Arial, sans-serif" font-size="34">Roadmaps, analytics, revision, and mock interviews.</text>
+</svg>
