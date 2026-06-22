@@ -25,6 +25,12 @@ app.use(express.json({ limit: "2mb" }));
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use("/api", generalApiLimiter);
 
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "AlgoMentor API is running"
+  });
+});
 app.get("/api/health", (_req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
