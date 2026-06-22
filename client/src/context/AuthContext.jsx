@@ -1,19 +1,39 @@
-import { createContext, useContext, useMemo, useState } from "react";
-import api from "../api/client";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import api, { clearStoredAuth, subscribeToUnauthorized } from "../api/client";
 import { demoUser } from "../data/demoData";
 
 const AuthContext = createContext(null);
 
+function readStoredAuth() {
+  try {
+    const storedUser = localStorage.getItem("algomentor_user");
+    const token = localStorage.getItem("algomentor_token");
+    const demoMode = localStorage.getItem("algomentor_demo") === "true";
+
+    if (!storedUser && !token && !demoMode) return { user: null, demoMode: false };
+
+    const user = JSON.parse(storedUser);
+    const validUser = user && typeof user === "object" && !Array.isArray(user);
+    if (!validUser || (!demoMode && !token)) {
+      clearStoredAuth();
+      return { user: null, demoMode: false };
+    }
+    return { user, demoMode };
+  } catch {
+    clearStoredAuth();
+    return { user: null, demoMode: false };
+  }
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("algomentor_user") || "null"));
-  const [demoMode, setDemoMode] = useState(() => localStorage.getItem("algomentor_demo") === "true");
+  const [auth, setAuth] = useState(readStoredAuth);
+  const { user, demoMode } = auth;
 
   const persist = (payload) => {
     localStorage.setItem("algomentor_token", payload.token);
     localStorage.setItem("algomentor_user", JSON.stringify(payload.user));
     localStorage.removeItem("algomentor_demo");
-    setDemoMode(false);
-    setUser(payload.user);
+    setAuth({ user: payload.user, demoMode: false });
   };
 
   const authenticate = async (path, values) => {
@@ -34,22 +54,23 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("algomentor_token");
     localStorage.setItem("algomentor_demo", "true");
     localStorage.setItem("algomentor_user", JSON.stringify(demoUser));
-    setDemoMode(true);
-    setUser(demoUser);
+    setAuth({ user: demoUser, demoMode: true });
   };
-  const logout = () => {
-    localStorage.removeItem("algomentor_token");
-    localStorage.removeItem("algomentor_user");
-    localStorage.removeItem("algomentor_demo");
-    setDemoMode(false);
-    setUser(null);
-  };
+  const logout = useCallback(() => {
+    clearStoredAuth();
+    setAuth({ user: null, demoMode: false });
+  }, []);
   const updateUser = (next) => {
-    setUser(next);
+    setAuth((current) => ({ ...current, user: next }));
     localStorage.setItem("algomentor_user", JSON.stringify(next));
   };
 
-  const value = useMemo(() => ({ user, demoMode, login, register, enterDemo, logout, updateUser }), [user, demoMode]);
+  useEffect(() => subscribeToUnauthorized(logout), [logout]);
+
+  const value = useMemo(
+    () => ({ user, demoMode, login, register, enterDemo, logout, updateUser }),
+    [user, demoMode, logout]
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
