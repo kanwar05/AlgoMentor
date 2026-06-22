@@ -1,11 +1,21 @@
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 60 },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true, minlength: 8, select: false },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      maxlength: 254,
+      match: [EMAIL_PATTERN, "Email must be a valid email address"]
+    },
+    password: { type: String, required: true, minlength: 8, maxlength: 72, select: false },
     codingGoal: { type: String, default: "Crack product-based company interviews", trim: true },
     targetCompany: {
       type: String,
