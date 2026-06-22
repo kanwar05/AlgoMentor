@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import RevisionTask from "../models/RevisionTask.js";
 import ReviewAttempt from "../models/ReviewAttempt.js";
 import { HttpError } from "../utils/httpError.js";
@@ -77,11 +78,11 @@ export function createRevisionTaskStore(model = RevisionTask) {
         return model.findOne({ userId, problemId, completed: false }).lean();
       }
     },
-    async complete(taskId, userId, result, completedAt) {
+    async complete(taskId, userId, result, completedAt, session) {
       return model.findOneAndUpdate(
         { _id: taskId, userId, completed: false },
         { $set: { completed: true, completedAt, result } },
-        { new: true, runValidators: true }
+        { new: true, runValidators: true, session }
       ).lean();
     }
   };
@@ -89,8 +90,8 @@ export function createRevisionTaskStore(model = RevisionTask) {
 
 export function createReviewAttemptStore(model = ReviewAttempt) {
   return {
-    async findLatest(userId, problemId) {
-      return model.findOne({ userId, problemId }).sort({ reviewedAt: -1 }).lean();
+    async findLatest(userId, problemId, session) {
+      return model.findOne({ userId, problemId }).sort({ reviewedAt: -1 }).session(session).lean();
     },
     async findLatestForProblems(userId, problemIds) {
       const attempts = await model.find({
@@ -104,8 +105,8 @@ export function createReviewAttemptStore(model = ReviewAttempt) {
       });
       return latest;
     },
-    async create(attempt) {
-      const document = await model.create(attempt);
+    async create(attempt, session) {
+      const [document] = await model.create([attempt], { session });
       return document.toObject();
     }
   };
@@ -162,32 +163,44 @@ export async function completeRevisionTask(
     completedAt = new Date()
   },
   store = createRevisionTaskStore(),
-  attemptStore = createReviewAttemptStore()
+  attemptStore = createReviewAttemptStore(),
+  { startSession = () => mongoose.startSession() } = {}
 ) {
   if (!allowedResults.has(result)) {
     throw new HttpError(400, "Result must be solved, hint, or failed");
   }
   const normalizedTimeTaken = normalizeOptionalNumber(timeTaken, "timeTaken", { min: 0 });
   const normalizedConfidence = normalizeOptionalNumber(confidence, "confidence", { min: 0, max: 100 });
-  const task = await store.complete(taskId, userId, result, completedAt);
-  if (!task) throw new HttpError(404, "Revision task not found");
-  const previous = await attemptStore.findLatest(userId, task.problemId);
-  const schedule = calculateReviewSchedule({
-    result,
-    previousInterval: previous?.interval,
-    previousEaseFactor: previous?.easeFactor,
-    reviewedAt: completedAt
-  });
-  const attempt = await attemptStore.create({
-    userId,
-    problemId: task.problemId,
-    result,
-    timeTaken: normalizedTimeTaken,
-    confidence: normalizedConfidence,
-    reviewedAt: completedAt,
-    ...schedule
-  });
-  return { ...task, attempt };
+  const session = await startSession();
+  let completed;
+
+  try {
+    await session.withTransaction(async () => {
+      const task = await store.complete(taskId, userId, result, completedAt, session);
+      if (!task) throw new HttpError(404, "Revision task not found");
+
+      const previous = await attemptStore.findLatest(userId, task.problemId, session);
+      const schedule = calculateReviewSchedule({
+        result,
+        previousInterval: previous?.interval,
+        previousEaseFactor: previous?.easeFactor,
+        reviewedAt: completedAt
+      });
+      const attempt = await attemptStore.create({
+        userId,
+        problemId: task.problemId,
+        result,
+        timeTaken: normalizedTimeTaken,
+        confidence: normalizedConfidence,
+        reviewedAt: completedAt,
+        ...schedule
+      }, session);
+      completed = { ...task, attempt };
+    });
+    return completed;
+  } finally {
+    await session.endSession();
+  }
 }
 
 // A binary max-heap prioritizes weak/revision items and medium questions in O(log n).
